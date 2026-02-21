@@ -36,6 +36,7 @@ jobs:
           EXA_API_KEY:          ${{ secrets.EXA_API_KEY }}
           TELEGRAM_BOT_TOKEN:   ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:     ${{ secrets.TELEGRAM_CHAT_ID }}
+          WEB_URL:              ${{ secrets.WEB_URL }}
         run: python main.py --now
 
       # ── 5. Commit updated DB back to repo ────────────────────────────────

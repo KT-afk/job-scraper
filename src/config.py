@@ -21,6 +21,10 @@ EXA_API_KEY: str = os.getenv("EXA_API_KEY", "")
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID: str   = os.getenv("TELEGRAM_CHAT_ID", "")
 
+# Public URL of the web UI — shown at the bottom of Telegram digests.
+# Leave blank if you're not hosting the web UI publicly.
+WEB_URL: str = os.getenv("WEB_URL", "")
+
 # ------------------------------------------------------------------
 # Discipline → query terms mapping
 # Each key becomes a DB tag; values are the query strings used by Exa.
@@ -129,6 +133,99 @@ def _build_exclude_keywords() -> list[str]:
 EXCLUDE_KEYWORDS: list[str] = _build_exclude_keywords()
 
 # ------------------------------------------------------------------
+# Junk result filtering
+# ------------------------------------------------------------------
+
+# URL substrings that indicate aggregator/listing pages, not real postings.
+# These sites show lists of jobs rather than a single job application page.
+EXCLUDE_DOMAINS: list[str] = [
+    # Job listing aggregators
+    "linkedin.com/jobs/search",
+    "indeed.com/jobs",
+    "glassdoor.com/Jobs",
+    "glassdoor.com/job-listing",
+    "glassdoor.com/listings",
+    "builtin.com/jobs",
+    "builtinnyc.com/jobs",
+    "builtinsf.com/jobs",
+    "builtinla.com/jobs",
+    "builtinboston.com/jobs",
+    "builtinchicago.com/jobs",
+    "builtinseattle.com/jobs",
+    "builtinaustin.com/jobs",
+    "builtincolorado.com/jobs",
+    "levels.fyi/jobs",
+    "h1bconnect.com",
+    "h1bdata.info",
+    "myvisajobs.com",
+    "simplyhired.com",
+    "ziprecruiter.com",
+    "monster.com",
+    "careerbuilder.com",
+    "dice.com",
+    "hired.com/jobs",
+    "angel.co/jobs",
+    "wellfound.com/jobs",
+    "otta.com/jobs",
+    "remoteok.com",
+    "weworkremotely.com",
+    "jobstreet.com",
+    "jobsdb.com",
+    "seek.com",
+    "careers.gov.sg",
+    "mycareersfuture.gov.sg",
+    "reddit.com",
+    "quora.com",
+    "medium.com",
+    "dev.to",
+    "hackernews",
+    "news.ycombinator.com",
+]
+
+# Title patterns that indicate a listing/article page, not a single job posting.
+# Checked case-insensitively against the result title.
+EXCLUDE_TITLE_PATTERNS: list[str] = [
+    # Aggregator-style titles
+    "jobs in singapore",
+    "jobs with salaries",
+    "best remote",
+    "top remote",
+    "remote jobs 2025",
+    "remote jobs 2024",
+    "engineering jobs",           # e.g. "H1B Engineering Jobs | Find..."
+    "find h-1b",
+    "h1b sponsorship",
+    "job board",
+    "jobs near you",
+    "search jobs",
+    "browse jobs",
+    "apply now",                  # generic CTA pages
+    "salary guide",
+    "salary report",
+    "hiring now",
+    "we're hiring",
+    "is hiring",
+    # Article/listicle titles
+    "how to get",
+    "how to land",
+    "tips for",
+    "guide to",
+    "everything you need",
+    "what is a",
+    "career guide",
+    "interview questions",
+    "interview tips",
+    # Plural listing indicators
+    " jobs | ",                   # e.g. "Backend Jobs | Glassdoor"
+    " jobs - ",                   # e.g. "Junior Jobs - Indeed"
+    "3000+",
+    "1000+",
+    "500+",
+    "200+",
+    "100+",
+]
+
+# ------------------------------------------------------------------
 # Visa / remote signal keywords
 # (used to tag each result in the DB — not to exclude results)
 # ------------------------------------------------------------------
@@ -162,8 +259,9 @@ CRAWL_DAYS_BACK: int = 1
 SEARCH_TYPE: str = "auto"
 
 # Characters of page text to fetch per result.
-# 800 gives enough context for visa/remote keyword detection.
-SNIPPET_MAX_CHARS: int = 800
+# 1500 gives enough context for junk detection, visa/remote keywords,
+# and a meaningful snippet to display.
+SNIPPET_MAX_CHARS: int = 1500
 
 # ------------------------------------------------------------------
 # Storage

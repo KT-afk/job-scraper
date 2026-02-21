@@ -22,12 +22,15 @@ import os
 from flask import Flask, jsonify, render_template, request
 from sqlmodel import Session, select
 
-from src.storage import JobPosting, _engine
+from src.storage import JobPosting, _engine, init_db
 
 # Flask looks for templates/ relative to the project root.
 # __file__ is job-scraper/src/web.py, so we go one level up.
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(__name__, template_folder=os.path.join(_root, "templates"))
+
+# Ensure the DB and tables exist when gunicorn imports this module on Railway.
+init_db()
 
 
 # ---------------------------------------------------------------------------

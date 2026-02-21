@@ -17,7 +17,9 @@ from __future__ import annotations
 from typing import Any
 
 from src.config import (
+    EXCLUDE_DOMAINS,
     EXCLUDE_KEYWORDS,
+    EXCLUDE_TITLE_PATTERNS,
     QUERY_TO_DISCIPLINE,
     REMOTE_KEYWORDS,
     VISA_KEYWORDS,
@@ -33,6 +35,27 @@ def _is_excluded(result: dict[str, Any]) -> bool:
     """
     haystack = f"{result.get('title', '')} {result.get('text', '')}".lower()
     return any(kw.lower() in haystack for kw in EXCLUDE_KEYWORDS)
+
+
+def _is_junk(result: dict[str, Any]) -> bool:
+    """
+    Return True if the result is an aggregator/listing page rather than
+    an actual individual job posting.
+
+    Two checks:
+      1. URL contains a known aggregator domain/path pattern.
+      2. Title matches a known listing/article pattern.
+    """
+    url   = result.get("url", "").lower()
+    title = result.get("title", "").lower()
+
+    if any(domain.lower() in url for domain in EXCLUDE_DOMAINS):
+        return True
+
+    if any(pat.lower() in title for pat in EXCLUDE_TITLE_PATTERNS):
+        return True
+
+    return False
 
 
 def _detect_visa(result: dict[str, Any]) -> bool:
@@ -69,15 +92,22 @@ def run_scrape() -> list[JobPosting]:
 
     new_jobs: list[JobPosting] = []
     skipped_excluded = 0
+    skipped_junk = 0
     skipped_duplicate = 0
 
     for result in raw_results:
-        # --- Step 1: Drop unwanted seniority / location results ---
+        # --- Step 1: Drop aggregator / listing pages ---
+        if _is_junk(result):
+            skipped_junk += 1
+            print(f"  [JUNK] {result.get('title', '')[:80]}")
+            continue
+
+        # --- Step 2: Drop unwanted seniority / location results ---
         if _is_excluded(result):
             skipped_excluded += 1
             continue
 
-        # --- Step 2: Deduplicate by Exa ID (URL-based) ---
+        # --- Step 3: Deduplicate by Exa ID (URL-based) ---
         if is_known(result["id"]):
             skipped_duplicate += 1
             continue
@@ -107,8 +137,9 @@ def run_scrape() -> list[JobPosting]:
     print(
         f"[Scraper] Done. "
         f"New: {len(new_jobs)} | "
-        f"Duplicates skipped: {skipped_duplicate} | "
-        f"Excluded by keyword: {skipped_excluded}"
+        f"Junk skipped: {skipped_junk} | "
+        f"Excluded by keyword: {skipped_excluded} | "
+        f"Duplicates skipped: {skipped_duplicate}"
     )
 
     return new_jobs
