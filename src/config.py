@@ -266,7 +266,12 @@ SNIPPET_MAX_CHARS: int = 1500
 # ------------------------------------------------------------------
 # Storage
 # ------------------------------------------------------------------
-DB_PATH: str = "jobs.db"
+
+# Resolve the DB path relative to the project root (one level above src/).
+# Using an absolute path avoids issues when the working directory differs
+# from the project root (e.g. on Railway/gunicorn).
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH: str = os.path.join(_PROJECT_ROOT, "jobs.db")
 
 # ------------------------------------------------------------------
 # Scheduler

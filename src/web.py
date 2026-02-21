@@ -31,6 +31,7 @@ app = Flask(__name__, template_folder=os.path.join(_root, "templates"))
 
 # Ensure the DB and tables exist when gunicorn imports this module on Railway.
 init_db()
+print(f"[web] DB ready. Templates: {os.path.join(_root, 'templates')}")
 
 
 # ---------------------------------------------------------------------------
