@@ -172,6 +172,7 @@ def save_job(job: JobPosting) -> None:
     with Session(_engine) as session:
         session.add(job)
         session.commit()
+        session.expunge(job)  # keep object usable after session closes
 
 
 def get_todays_jobs() -> list[JobPosting]:
