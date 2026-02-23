@@ -264,14 +264,19 @@ SEARCH_TYPE: str = "auto"
 SNIPPET_MAX_CHARS: int = 1500
 
 # ------------------------------------------------------------------
-# Storage
+# Database
 # ------------------------------------------------------------------
 
-# Resolve the DB path relative to the project root (one level above src/).
-# Using an absolute path avoids issues when the working directory differs
-# from the project root (e.g. on Railway/gunicorn).
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH: str = os.path.join(_PROJECT_ROOT, "jobs.db")
+# Supabase (Postgres) connection string.
+# Set this in your .env file locally and as a secret in Railway / GitHub Actions.
+# Format: postgresql://postgres.[project-ref]:[password]@aws-X-[region].pooler.supabase.com:5432/postgres
+DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+# ------------------------------------------------------------------
+# Anthropic AI
+# ------------------------------------------------------------------
+
+ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 
 # ------------------------------------------------------------------
 # Scheduler

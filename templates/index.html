@@ -45,10 +45,21 @@
       padding: 2px 8px;
       border-radius: 999px;
     }
+    .header-settings-link {
+      margin-left: auto;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .header-settings-link:hover { color: var(--text); border-color: var(--accent); }
 
-    /* ── Controls ── */
+    /* ── Controls Row 1 ── */
     .controls {
-      padding: 16px 32px;
+      padding: 12px 32px;
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
@@ -109,6 +120,72 @@
       font-size: 12px;
     }
 
+    /* ── Controls Row 2 ── */
+    .controls-row2 {
+      padding: 10px 32px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    /* Pill groups */
+    .pill-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .pill-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+    .pill {
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--text); }
+    .pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* dismissed toggle */
+    .dismissed-toggle {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dismissed-toggle.active {
+      border-color: #f87171;
+      background: #2a1414;
+      color: #fca5a5;
+    }
+
     /* ── Stats strip ── */
     .stats-strip {
       padding: 10px 32px;
@@ -144,6 +221,13 @@
     tbody tr:hover { background: var(--surface); }
     tbody td { padding: 12px 14px; vertical-align: top; }
 
+    /* dismissed rows */
+    tbody tr.dismissed {
+      opacity: 0.4;
+    }
+    tbody tr.dismissed td { text-decoration: line-through; }
+    tbody tr.dismissed td.no-strike { text-decoration: none; }
+
     .job-title { font-weight: 600; max-width: 360px; }
     .job-title a { color: var(--text); text-decoration: none; }
     .job-title a:hover { color: var(--accent); }
@@ -157,6 +241,21 @@
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+    }
+
+    /* new badge */
+    .new-badge {
+      display: inline-block;
+      background: var(--accent2);
+      color: #000;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+      margin-left: 6px;
     }
 
     /* tags */
@@ -197,6 +296,74 @@
     /* result count */
     .result-count { font-size: 12px; color: var(--muted); padding: 0 32px 10px; }
 
+    /* ── AI chip strip ── */
+    .ai-strip {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .ai-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .ai-chip-disqualifier { background: #3b0f0f; color: #fca5a5; border: 1px solid #7f1d1d; }
+    .ai-chip-caution      { background: #2a1f00; color: #fcd34d; border: 1px solid #78350f; }
+    .ai-chip-match        { background: #0f2a1a; color: #86efac; border: 1px solid #14532d; }
+    .ai-chip-req          { background: #1e1b4b; color: #c4b5fd; border: 1px solid #3730a3; }
+    .ai-empty {
+      font-size: 11px;
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 6px;
+    }
+    .ai-empty a { color: var(--accent); }
+
+    /* ── Tracking cell ── */
+    .tracking-cell { min-width: 160px; }
+    .status-select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      margin-bottom: 6px;
+    }
+    .status-select:focus { border-color: var(--accent); }
+    .status-select[data-status="interested"] { border-color: #6366f1; color: #a5b4fc; }
+    .status-select[data-status="applied"]    { border-color: #0284c7; color: #7dd3fc; }
+    .status-select[data-status="interviewing"] { border-color: #d97706; color: #fcd34d; }
+    .status-select[data-status="offer"]      { border-color: #16a34a; color: #86efac; }
+    .status-select[data-status="rejected"]   { border-color: #dc2626; color: #fca5a5; }
+    .status-select[data-status="dismissed"]  { border-color: #4b5563; color: #9ca3af; }
+    .notes-textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      outline: none;
+      resize: vertical;
+      min-height: 48px;
+      transition: border-color 0.15s;
+    }
+    .notes-textarea:focus { border-color: var(--accent); }
+    .notes-textarea::placeholder { color: var(--muted); }
+
     /* ── Empty / loading ── */
     .empty { text-align: center; padding: 80px 0; color: var(--muted); }
     .empty h2 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
@@ -218,8 +385,10 @@
 <header>
   <h1><span>&#9680;</span> Job Board</h1>
   <span id="total-badge">…</span>
+  <a href="/settings" class="header-settings-link">Settings</a>
 </header>
 
+<!-- Row 1: existing filters -->
 <div class="controls">
   <input id="search" type="search" placeholder="Search title or snippet…" />
 
@@ -237,8 +406,8 @@
     {% endfor %}
   </select>
 
-  <button class="toggle-btn" id="btn-visa"   onclick="toggleFilter('visa')">  Visa Sponsored</button>
-  <button class="toggle-btn" id="btn-remote" onclick="toggleFilter('remote')"> Remote</button>
+  <button class="toggle-btn" id="btn-visa"   onclick="toggleFilter('visa')">Visa Sponsored</button>
+  <button class="toggle-btn" id="btn-remote" onclick="toggleFilter('remote')">Remote</button>
 
   <div class="sort-group">
     Sort
@@ -247,6 +416,30 @@
       <option value="title">Title A–Z</option>
     </select>
   </div>
+</div>
+
+<!-- Row 2: status pills, date pills, show-dismissed toggle -->
+<div class="controls-row2">
+  <div class="pill-group">
+    <span class="pill-group-label">Status</span>
+    <button class="pill active" data-group="status" data-value="">All</button>
+    <button class="pill" data-group="status" data-value="interested">Interested</button>
+    <button class="pill" data-group="status" data-value="applied">Applied</button>
+    <button class="pill" data-group="status" data-value="interviewing">Interviewing</button>
+    <button class="pill" data-group="status" data-value="offer">Offer</button>
+    <button class="pill" data-group="status" data-value="rejected">Rejected</button>
+  </div>
+
+  <div class="pill-group" style="margin-left: 16px;">
+    <span class="pill-group-label">Date</span>
+    <button class="pill active" data-group="days" data-value="">Any time</button>
+    <button class="pill" data-group="days" data-value="1">Today</button>
+    <button class="pill" data-group="days" data-value="2">2 days</button>
+    <button class="pill" data-group="days" data-value="3">3 days</button>
+    <button class="pill" data-group="days" data-value="7">This week</button>
+  </div>
+
+  <button class="dismissed-toggle" id="btn-dismissed">Show Dismissed</button>
 </div>
 
 <div class="stats-strip" id="stats-strip">Loading…</div>
@@ -263,6 +456,7 @@
         <th>Tags</th>
         <th>Published</th>
         <th>Seen</th>
+        <th>Track</th>
         <th></th>
       </tr>
     </thead>
@@ -286,10 +480,35 @@
   const badge       = document.getElementById('total-badge');
   const statsStrip  = document.getElementById('stats-strip');
   const resultCount = document.getElementById('result-count');
+  const btnDismissed = document.getElementById('btn-dismissed');
 
   let filters = { visa: false, remote: false };
+  let showDismissed = false;
   let debounceTimer = null;
 
+  // ── Pill group state ──
+  function getActivePill(group) {
+    const active = document.querySelector(`.pill[data-group="${group}"].active`);
+    return active ? active.dataset.value : '';
+  }
+
+  document.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const group = pill.dataset.group;
+      document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      loadJobs();
+    });
+  });
+
+  // ── Dismissed toggle ──
+  btnDismissed.addEventListener('click', () => {
+    showDismissed = !showDismissed;
+    btnDismissed.classList.toggle('active', showDismissed);
+    loadJobs();
+  });
+
+  // ── Existing toggles ──
   function toggleFilter(key) {
     filters[key] = !filters[key];
     const btn = document.getElementById(`btn-${key}`);
@@ -324,6 +543,91 @@
     return esc(d.slice(0, 10));
   }
 
+  // ── AI analysis chip strip ──
+  function renderAnalysis(aiJson) {
+    if (!aiJson) {
+      return `<div class="ai-empty">No AI analysis — <a href="/settings">set up your profile</a> to enable screening.</div>`;
+    }
+
+    let analysis;
+    try {
+      analysis = typeof aiJson === 'string' ? JSON.parse(aiJson) : aiJson;
+    } catch {
+      return `<div class="ai-empty">Analysis unavailable.</div>`;
+    }
+
+    const chips = [];
+
+    (analysis.disqualifiers || []).forEach(d => {
+      chips.push(`<span class="ai-chip ai-chip-disqualifier">✕ ${esc(d)}</span>`);
+    });
+    (analysis.caution || []).forEach(c => {
+      chips.push(`<span class="ai-chip ai-chip-caution">⚠ ${esc(c)}</span>`);
+    });
+    (analysis.matched_projects || []).forEach(p => {
+      chips.push(`<span class="ai-chip ai-chip-match">✓ ${esc(p)}</span>`);
+    });
+    (analysis.key_requirements || []).forEach(r => {
+      chips.push(`<span class="ai-chip ai-chip-req">${esc(r)}</span>`);
+    });
+
+    if (chips.length === 0) {
+      return `<div class="ai-empty">Analysis returned no items.</div>`;
+    }
+
+    return `<div class="ai-strip">${chips.join('')}</div>`;
+  }
+
+  // ── Tracking: status select + notes ──
+  async function updateJob(jobId, payload) {
+    try {
+      await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('updateJob failed:', err);
+    }
+  }
+
+  function renderStatusSelect(job) {
+    const statuses = ['none', 'interested', 'applied', 'interviewing', 'offer', 'rejected', 'dismissed'];
+    const labels   = ['— Status —', 'Interested', 'Applied', 'Interviewing', 'Offer', 'Rejected', 'Dismissed'];
+    const options = statuses.map((s, i) =>
+      `<option value="${s}" ${job.status === s ? 'selected' : ''}>${labels[i]}</option>`
+    ).join('');
+
+    return `<select class="status-select" data-status="${esc(job.status)}" data-job-id="${esc(job.id)}" onchange="onStatusChange(this)">
+      ${options}
+    </select>
+    <textarea class="notes-textarea" data-job-id="${esc(job.id)}"
+      placeholder="Notes…"
+      onblur="onNotesBlur(this)">${esc(job.notes || '')}</textarea>`;
+  }
+
+  function onStatusChange(select) {
+    const jobId = select.dataset.jobId;
+    const newStatus = select.value;
+    select.dataset.status = newStatus;
+
+    // Apply dismissed styling to the row immediately
+    const row = select.closest('tr');
+    if (newStatus === 'dismissed') {
+      row.classList.add('dismissed');
+    } else {
+      row.classList.remove('dismissed');
+    }
+
+    updateJob(jobId, { status: newStatus });
+  }
+
+  function onNotesBlur(textarea) {
+    const jobId = textarea.dataset.jobId;
+    updateJob(jobId, { notes: textarea.value });
+  }
+
+  // ── Stats ──
   async function loadStats() {
     const res = await fetch('/api/stats');
     const data = await res.json();
@@ -343,6 +647,7 @@
     `;
   }
 
+  // ── Jobs ──
   async function loadJobs() {
     spinner.style.display    = 'flex';
     table.style.display      = 'none';
@@ -354,9 +659,15 @@
       discipline: discEl.value,
       location:   locationEl.value,
       sort:       sortEl.value,
-      ...(filters.visa   ? { visa: '1' }   : {}),
-      ...(filters.remote ? { remote: '1' } : {}),
+      ...(filters.visa      ? { visa: '1' }       : {}),
+      ...(filters.remote    ? { remote: '1' }     : {}),
+      ...(showDismissed     ? { dismissed: '1' }  : {}),
     });
+
+    const statusVal = getActivePill('status');
+    const daysVal   = getActivePill('days');
+    if (statusVal) params.set('status', statusVal);
+    if (daysVal)   params.set('days', daysVal);
 
     const res  = await fetch(`/api/jobs?${params}`);
     const jobs = await res.json();
@@ -371,17 +682,20 @@
     resultCount.textContent = `Showing ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
 
     tbody.innerHTML = jobs.map((j, i) => `
-      <tr>
+      <tr class="${j.status === 'dismissed' ? 'dismissed' : ''}">
         <td class="date-cell">${i + 1}</td>
         <td class="job-title">
           <a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
+          ${j.seen_today ? '<span class="new-badge">New</span>' : ''}
           ${j.snippet ? `<div class="job-snippet">${esc(j.snippet)}</div>` : ''}
+          ${renderAnalysis(j.ai_analysis)}
         </td>
         <td><span class="tag tag-discipline">${esc(j.discipline || '—')}</span></td>
         <td>${locationTags(j)}</td>
         <td class="date-cell">${formatDate(j.published)}</td>
         <td class="seen-cell">${esc(j.seen_at)}</td>
-        <td>
+        <td class="tracking-cell no-strike">${renderStatusSelect(j)}</td>
+        <td class="no-strike">
           <a class="link-btn" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>
         </td>
       </tr>

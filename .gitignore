@@ -1,7 +1,5 @@
 .env
-# Ignore all .db files except the main jobs database
 *.db
-!jobs.db
 __pycache__/
 *.pyc
 .venv/

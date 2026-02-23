@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — Job Board</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3e;
+      --accent:  #6c63ff;
+      --accent2: #00d4aa;
+      --text:    #e2e8f0;
+      --muted:   #8892a4;
+      --danger:  #ff6b6b;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header h1 { font-size: 20px; font-weight: 700; }
+    header h1 span { color: var(--accent); }
+    header a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    header a:hover { color: var(--text); border-color: var(--accent); }
+
+    .page-content {
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 32px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--accent2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Resume upload */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover { border-color: var(--accent); color: var(--text); }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .upload-zone .upload-icon { font-size: 32px; margin-bottom: 10px; }
+    .upload-zone p { font-size: 13px; }
+    .upload-zone p strong { color: var(--accent); }
+
+    #parse-status {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    #parse-status.success { color: var(--accent2); }
+    #parse-status.error   { color: var(--danger); }
+
+    /* Form fields */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="text"],
+    input[type="month"],
+    textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+
+    .form-actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .success-banner {
+      background: #0f2a25;
+      border: 1px solid var(--accent2);
+      color: var(--accent2);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span>&#9680;</span> Job Board</h1>
+  <a href="/">Back to Jobs</a>
+</header>
+
+<div class="page-content">
+  <h2>Profile &amp; Settings</h2>
+
+  <!-- Resume Upload Section -->
+  <div class="section">
+    <div class="section-title">Resume Upload (AI Parse)</div>
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="resume-input" accept=".pdf" onchange="parseResume(this)" />
+      <div class="upload-icon">📄</div>
+      <p><strong>Click to upload</strong> or drag and drop your resume PDF</p>
+      <p style="margin-top:4px">AI will extract your profile fields automatically</p>
+    </div>
+    <div id="parse-status"></div>
+  </div>
+
+  <!-- Profile Form -->
+  <div class="section">
+    <div class="section-title">Profile Details</div>
+    <form method="POST" action="/settings" id="profile-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="graduation_date">Graduation Date</label>
+          <input type="month" id="graduation_date" name="graduation_date"
+                 value="{{ profile.graduation_date if profile else '' }}"
+                 placeholder="2025-06" />
+        </div>
+
+        <div class="form-group">
+          <label for="location">Current Location</label>
+          <input type="text" id="location" name="location"
+                 value="{{ profile.location if profile else '' }}"
+                 placeholder="Singapore" />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="visa_status">Visa / Work Authorisation</label>
+          <input type="text" id="visa_status" name="visa_status"
+                 value="{{ profile.visa_status if profile else '' }}"
+                 placeholder="e.g. Requires sponsorship, EU citizen, PR holder" />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="skills">Technical Skills</label>
+          <input type="text" id="skills" name="skills"
+                 value="{{ profile.skills if profile else '' }}"
+                 placeholder="Python, Go, Kubernetes, React, PostgreSQL, …" />
+          <span class="hint">Comma-separated list of your technical skills</span>
+        </div>
+
+        <div class="form-group full-width">
+          <label for="projects">Projects (JSON)</label>
+          <textarea id="projects" name="projects"
+                    placeholder='[{"name": "MyProject", "desc": "What it does and tech used"}]'>{{ profile.projects if profile else '[]' }}</textarea>
+          <span class="hint">JSON array of {"name": "...", "desc": "..."} objects. AI uses these to find relevant matches.</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Profile</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  async function parseResume(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById('parse-status');
+    statusEl.textContent = 'Parsing resume with AI…';
+    statusEl.className = '';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/settings/parse-resume', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        statusEl.textContent = `Error: ${data.error || 'Failed to parse resume'}`;
+        statusEl.className = 'error';
+        return;
+      }
+
+      // Pre-fill form fields
+      if (data.graduation_date) {
+        document.getElementById('graduation_date').value = data.graduation_date;
+      }
+      if (data.location) {
+        document.getElementById('location').value = data.location;
+      }
+      if (data.visa_status) {
+        document.getElementById('visa_status').value = data.visa_status;
+      }
+      if (data.skills) {
+        document.getElementById('skills').value = data.skills;
+      }
+      if (data.projects) {
+        const projectsVal = Array.isArray(data.projects)
+          ? JSON.stringify(data.projects, null, 2)
+          : data.projects;
+        document.getElementById('projects').value = projectsVal;
+      }
+
+      statusEl.textContent = 'Resume parsed successfully. Review the fields below and save.';
+      statusEl.className = 'success';
+    } catch (err) {
+      statusEl.textContent = 'Network error. Please try again.';
+      statusEl.className = 'error';
+    }
+  }
+</script>
+</body>
+</html>

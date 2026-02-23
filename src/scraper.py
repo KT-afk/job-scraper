@@ -14,6 +14,7 @@ Orchestrates one full scrape cycle:
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from src.config import (
@@ -24,8 +25,9 @@ from src.config import (
     REMOTE_KEYWORDS,
     VISA_KEYWORDS,
 )
+from src.ai_analysis import analyze_job
 from src.exa_client import fetch_jobs
-from src.storage import JobPosting, is_known, save_job
+from src.storage import JobPosting, get_profile, is_known, save_job, update_job_analysis
 
 
 def _is_excluded(result: dict[str, Any]) -> bool:
@@ -141,5 +143,18 @@ def run_scrape() -> list[JobPosting]:
         f"Excluded by keyword: {skipped_excluded} | "
         f"Duplicates skipped: {skipped_duplicate}"
     )
+
+    # --- AI analysis: run per new job if a user profile exists ---
+    if new_jobs:
+        profile = get_profile()
+        if profile:
+            print(f"[Scraper] Running AI analysis on {len(new_jobs)} new job(s)...")
+            for job in new_jobs:
+                analysis = analyze_job(job, profile)
+                if analysis:
+                    update_job_analysis(job.id, json.dumps(analysis))
+                    print(f"  [AI] Analysed: {job.title[:60]}")
+        else:
+            print("[Scraper] No user profile found — skipping AI analysis.")
 
     return new_jobs
