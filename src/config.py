@@ -180,7 +180,37 @@ EXCLUDE_DOMAINS: list[str] = [
     "dev.to",
     "hackernews",
     "news.ycombinator.com",
+    # Non-SWE job boards
+    "wfhremoteboard.com",
+    "hiresociall.com",
+    "workingmomjobs.com",
+    "flexjobs.com",
 ]
+
+# Title/snippet keywords that indicate a non-SWE role.
+EXCLUDE_ROLE_KEYWORDS: list[str] = [
+    "chat support",
+    "chat assistant",
+    "copywriter",
+    "customer support",
+    "customer service",
+    "data entry",
+    "virtual assistant",
+    "content writer",
+    "social media",
+    "sales representative",
+    "account manager",
+    "recruiter",
+    "marketing",
+    "graphic design",
+    "video editor",
+    "transcription",
+    "proofreader",
+    "translator",
+]
+
+# Merge role keywords into the main exclude list
+EXCLUDE_KEYWORDS = EXCLUDE_KEYWORDS + EXCLUDE_ROLE_KEYWORDS
 
 # Title patterns that indicate a listing/article page, not a single job posting.
 # Checked case-insensitively against the result title.
