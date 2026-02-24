@@ -62,8 +62,9 @@ def test_reflect_inserts_new_queries():
     from src.agent import reflect
     from src.storage import get_active_agent_queries, save_profile, UserProfile
 
-    # Seed a profile so generation is not skipped
-    save_profile(UserProfile(skills="Python, FastAPI", location="Remote"))
+    # Seed a profile so reflect() enters the generate block
+    save_profile(UserProfile(id=1, graduation_date="2025-06", location="Singapore",
+                             visa_status="Requires sponsorship", skills="Python, Go", projects="[]"))
 
     mock_response = _mock_claude_response(generate=["Junior Python Developer remote"])
     with patch("src.agent._call_claude", return_value=mock_response):
@@ -90,7 +91,11 @@ def test_reflect_skips_duplicate_queries():
 
 def test_reflect_enforces_max_cap():
     from src.agent import reflect, MAX_AGENT_QUERIES
-    from src.storage import count_active_agent_queries
+    from src.storage import count_active_agent_queries, save_profile, UserProfile
+
+    # Seed a profile so reflect() enters the generate block
+    save_profile(UserProfile(id=1, graduation_date="2025-06", location="Singapore",
+                             visa_status="Requires sponsorship", skills="Python, Go", projects="[]"))
 
     # Fill up to the cap
     for i in range(MAX_AGENT_QUERIES):
@@ -115,19 +120,14 @@ def test_reflect_returns_gracefully_on_claude_error():
 
 def test_reflect_skips_generation_with_no_profile():
     from src.agent import reflect
-    from src.storage import get_active_agent_queries
+    from src.storage import get_active_agent_queries, count_active_agent_queries
 
     # No profile in DB — generation should be skipped
     mock_response = _mock_claude_response(generate=["some-query"])
     with patch("src.agent._call_claude", return_value=mock_response):
-        # Even if Claude returns something, we don't call Claude at all when no profile
+        # Even if Claude returns generate entries, nothing is inserted when there is no profile
         with patch("src.agent.get_profile", return_value=None):
             reflect()
 
     # Nothing should be inserted
     assert count_active_agent_queries() == 0
-
-
-def count_active_agent_queries():
-    from src.storage import count_active_agent_queries as _count
-    return _count()

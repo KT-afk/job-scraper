@@ -23,7 +23,6 @@ import anthropic
 import src.config as _cfg
 from src.storage import (
     count_active_agent_queries,
-    get_active_agent_queries,
     get_profile,
     get_query_history,
     insert_agent_query,
