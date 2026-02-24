@@ -27,6 +27,7 @@ from src.config import (
     ROLES,
     VISA_KEYWORDS,
 )
+from src.agent import reflect
 from src.ai_analysis import analyze_job
 from src.exa_client import fetch_jobs
 from src.storage import (
@@ -180,12 +181,27 @@ def run_scrape() -> list[JobPosting]:
         profile = get_profile()
         if profile:
             print(f"[Scraper] Running AI analysis on {len(new_jobs)} new job(s)...")
+            query_scores: dict[str, list[float]] = {}
             for job in new_jobs:
                 analysis = analyze_job(job, profile)
                 if analysis:
                     update_job_analysis(job.id, json.dumps(analysis))
                     print(f"  [AI] Analysed: {job.title[:60]}")
+                    score = analysis.get("overall_score")
+                    if isinstance(score, (int, float)):
+                        query_scores.setdefault(job.role, []).append(float(score))
+            # Update avg_ai_score for each query that has scores
+            for q, scores in query_scores.items():
+                avg = sum(scores) / len(scores)
+                source = "baseline" if q in baseline_set else "agent"
+                found = query_found.get(q, 0)
+                kept = query_kept.get(q, 0)
+                upsert_query_performance(q, source, today, found, kept, avg_ai_score=avg)
         else:
             print("[Scraper] No user profile found — skipping AI analysis.")
+
+    # --- Agent reflection: retire underperformers, generate new queries ---
+    print("[Scraper] Running agent reflection...")
+    reflect()
 
     return new_jobs

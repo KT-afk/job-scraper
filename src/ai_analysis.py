@@ -36,6 +36,7 @@ _ANALYSIS_SCHEMA = {
     "caution": "list[str] — soft concerns worth noting",
     "matched_projects": "list[str] — names of the user's projects relevant to this role",
     "key_requirements": "list[str] — 3-5 bullet points of what this role needs",
+    "overall_score": "float 0.0–1.0 — overall fit score (0=poor, 1=excellent)",
 }
 
 _ANALYZE_SYSTEM = (
@@ -43,7 +44,8 @@ _ANALYZE_SYSTEM = (
     "return ONLY a JSON object with exactly these keys: "
     "disqualifiers (hard blockers), caution (soft concerns), "
     "matched_projects (candidate's relevant projects), "
-    "key_requirements (3-5 bullet points of what the role needs). "
+    "key_requirements (3-5 bullet points of what the role needs), "
+    "overall_score (float 0.0–1.0 overall fit score, 0=poor fit, 1=excellent fit). "
     "No markdown, no explanation, just the JSON object."
 )
 

@@ -45,6 +45,7 @@ GOOD_ANALYSIS = {
     "caution": ["contract role"],
     "matched_projects": ["JobScraper"],
     "key_requirements": ["Python", "Kubernetes", "3+ years (borderline)"],
+    "overall_score": 0.75,
 }
 
 
@@ -75,6 +76,8 @@ def test_analyze_job_returns_dict_with_all_keys(monkeypatch):
     assert "caution" in result
     assert "matched_projects" in result
     assert "key_requirements" in result
+    assert "overall_score" in result
+    assert isinstance(result["overall_score"], float)
 
 
 def test_analyze_job_returns_none_on_api_exception(monkeypatch):
