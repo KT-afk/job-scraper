@@ -35,9 +35,10 @@ UserProfile
 from __future__ import annotations
 
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import date as _date, datetime, timedelta, timezone
 from typing import Optional, Sequence
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from src.config import DATABASE_URL
@@ -84,6 +85,8 @@ class UserProfile(SQLModel, table=True):
 
 class QueryPerformance(SQLModel, table=True):
     """Per-query performance record for one scrape run."""
+
+    __table_args__ = (UniqueConstraint("query", "run_date"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     query: str                              # the Exa query string
@@ -270,8 +273,6 @@ def get_profile() -> Optional[UserProfile]:
 # QueryPerformance operations
 # ---------------------------------------------------------------------------
 
-from datetime import date as _date
-
 
 def upsert_query_performance(
     query: str,
@@ -318,7 +319,6 @@ def upsert_query_performance(
 
 def get_query_history(days: int = 14) -> list[QueryPerformance]:
     """Return all QueryPerformance rows from the last `days` days."""
-    from datetime import timedelta
     cutoff = (_date.today() - timedelta(days=days)).isoformat()
     with Session(_engine) as session:
         statement = select(QueryPerformance).where(
