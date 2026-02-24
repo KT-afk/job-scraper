@@ -15,6 +15,7 @@ Orchestrates one full scrape cycle:
 from __future__ import annotations
 
 import json
+from datetime import date as _date
 from typing import Any
 
 from src.config import (
@@ -23,11 +24,20 @@ from src.config import (
     EXCLUDE_TITLE_PATTERNS,
     QUERY_TO_DISCIPLINE,
     REMOTE_KEYWORDS,
+    ROLES,
     VISA_KEYWORDS,
 )
 from src.ai_analysis import analyze_job
 from src.exa_client import fetch_jobs
-from src.storage import JobPosting, get_profile, is_known, save_job, update_job_analysis
+from src.storage import (
+    JobPosting,
+    get_active_agent_queries,
+    get_profile,
+    is_known,
+    save_job,
+    update_job_analysis,
+    upsert_query_performance,
+)
 
 
 def _is_excluded(result: dict[str, Any]) -> bool:
@@ -88,8 +98,13 @@ def run_scrape() -> list[JobPosting]:
     Execute one full scrape cycle and return only the NEW postings
     that were inserted into the database during this run.
     """
+    # Load active agent queries to supplement baseline
+    agent_query_rows = get_active_agent_queries()
+    agent_queries = [r.query for r in agent_query_rows]
+
     print("\n[Scraper] Starting fetch from Exa...")
-    raw_results = fetch_jobs()
+    print(f"[Scraper] Baseline queries: {len(ROLES)} | Agent queries: {len(agent_queries)}")
+    raw_results = fetch_jobs(extra_queries=agent_queries)
     print(f"[Scraper] Exa returned {len(raw_results)} raw results.")
 
     new_jobs: list[JobPosting] = []
@@ -143,6 +158,22 @@ def run_scrape() -> list[JobPosting]:
         f"Excluded by keyword: {skipped_excluded} | "
         f"Duplicates skipped: {skipped_duplicate}"
     )
+
+    # --- Record per-query performance stats ---
+    today = _date.today()
+    baseline_set = set(ROLES)
+    query_found: dict[str, int] = {}
+    query_kept: dict[str, int] = {}
+    for result in raw_results:
+        q = result["role"]
+        query_found[q] = query_found.get(q, 0) + 1
+    for job in new_jobs:
+        q = job.role
+        query_kept[q] = query_kept.get(q, 0) + 1
+    for q, found in query_found.items():
+        kept = query_kept.get(q, 0)
+        source = "baseline" if q in baseline_set else "agent"
+        upsert_query_performance(q, source, today, found, kept, avg_ai_score=None)
 
     # --- AI analysis: run per new job if a user profile exists ---
     if new_jobs:

@@ -44,7 +44,7 @@ def _cutoff_date() -> str:
     return cutoff.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
-def fetch_jobs() -> list[dict[str, Any]]:
+def fetch_jobs(extra_queries: list[str] | None = None) -> list[dict[str, Any]]:
     """
     Run all (role, location) combinations through Exa and return
     a flat list of raw result dicts.
@@ -58,6 +58,10 @@ def fetch_jobs() -> list[dict[str, Any]]:
         text              - text snippet from the page
         role              - raw query string used (added by us)
         location_searched - location term used (added by us)
+
+    Args:
+        extra_queries: Optional list of additional query strings to search
+                       (e.g. agent-generated queries). Run in addition to ROLES.
     """
     if not EXA_API_KEY:
         raise EnvironmentError(
@@ -69,7 +73,9 @@ def fetch_jobs() -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 
-    for role in ROLES:
+    all_roles = list(ROLES) + (extra_queries or [])
+
+    for role in all_roles:
         for location in LOCATIONS:
             query = _build_query(role, location)
 
