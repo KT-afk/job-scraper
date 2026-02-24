@@ -82,6 +82,20 @@ class UserProfile(SQLModel, table=True):
     projects: str = "[]"                       # JSON array of {name, desc}
 
 
+class QueryPerformance(SQLModel, table=True):
+    """Per-query performance record for one scrape run."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    query: str                              # the Exa query string
+    source: str                             # 'baseline' or 'agent'
+    run_date: str                           # ISO date string e.g. "2026-02-24"
+    jobs_found: int = 0
+    jobs_kept: int = 0
+    junk_rate: Optional[float] = None       # 1 - jobs_kept/jobs_found
+    avg_ai_score: Optional[float] = None
+    is_active: bool = True                  # agent can retire by setting False
+
+
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
@@ -250,3 +264,131 @@ def get_profile() -> Optional[UserProfile]:
     """Return the single user profile, or None if not yet configured."""
     with Session(_engine) as session:
         return session.get(UserProfile, 1)
+
+
+# ---------------------------------------------------------------------------
+# QueryPerformance operations
+# ---------------------------------------------------------------------------
+
+from datetime import date as _date
+
+
+def upsert_query_performance(
+    query: str,
+    source: str,
+    run_date: _date,
+    jobs_found: int,
+    jobs_kept: int,
+    avg_ai_score: Optional[float],
+) -> None:
+    """
+    Insert or update a QueryPerformance row for (query, run_date).
+    Calculates junk_rate automatically.
+    """
+    run_date_str = run_date.isoformat()
+    junk_rate = None
+    if jobs_found > 0:
+        junk_rate = 1.0 - jobs_kept / jobs_found
+
+    with Session(_engine) as session:
+        statement = select(QueryPerformance).where(
+            QueryPerformance.query == query,
+            QueryPerformance.run_date == run_date_str,
+        )
+        existing = session.exec(statement).first()
+        if existing:
+            existing.jobs_found = jobs_found
+            existing.jobs_kept = jobs_kept
+            existing.junk_rate = junk_rate
+            existing.avg_ai_score = avg_ai_score
+            session.add(existing)
+        else:
+            row = QueryPerformance(
+                query=query,
+                source=source,
+                run_date=run_date_str,
+                jobs_found=jobs_found,
+                jobs_kept=jobs_kept,
+                junk_rate=junk_rate,
+                avg_ai_score=avg_ai_score,
+            )
+            session.add(row)
+        session.commit()
+
+
+def get_query_history(days: int = 14) -> list[QueryPerformance]:
+    """Return all QueryPerformance rows from the last `days` days."""
+    from datetime import timedelta
+    cutoff = (_date.today() - timedelta(days=days)).isoformat()
+    with Session(_engine) as session:
+        statement = select(QueryPerformance).where(
+            QueryPerformance.run_date >= cutoff
+        )
+        return list(session.exec(statement).all())
+
+
+def get_active_agent_queries() -> list[QueryPerformance]:
+    """
+    Return one row per active agent query (most recent run_date).
+    Used to load agent queries at scrape start.
+    """
+    with Session(_engine) as session:
+        statement = select(QueryPerformance).where(
+            QueryPerformance.source == "agent",
+            QueryPerformance.is_active == True,  # noqa: E712
+        )
+        rows = list(session.exec(statement).all())
+    # Deduplicate: keep only the most recent row per query string
+    seen: dict[str, QueryPerformance] = {}
+    for row in rows:
+        if row.query not in seen or row.run_date > seen[row.query].run_date:
+            seen[row.query] = row
+    return list(seen.values())
+
+
+def retire_query(query: str) -> None:
+    """Set is_active=False for all rows with this query string."""
+    with Session(_engine) as session:
+        statement = select(QueryPerformance).where(
+            QueryPerformance.query == query
+        )
+        rows = list(session.exec(statement).all())
+        for row in rows:
+            row.is_active = False
+            session.add(row)
+        session.commit()
+
+
+def insert_agent_query(query: str) -> None:
+    """
+    Insert a new agent-generated query as a placeholder row (no stats yet).
+    No-op if the query already exists and is active.
+    """
+    with Session(_engine) as session:
+        statement = select(QueryPerformance).where(
+            QueryPerformance.query == query,
+            QueryPerformance.source == "agent",
+            QueryPerformance.is_active == True,  # noqa: E712
+        )
+        existing = session.exec(statement).first()
+        if existing:
+            return  # duplicate — skip
+        row = QueryPerformance(
+            query=query,
+            source="agent",
+            run_date=_date.today().isoformat(),
+            jobs_found=0,
+            jobs_kept=0,
+        )
+        session.add(row)
+        session.commit()
+
+
+def count_active_agent_queries() -> int:
+    """Return the count of currently active agent-generated queries."""
+    with Session(_engine) as session:
+        statement = select(QueryPerformance).where(
+            QueryPerformance.source == "agent",
+            QueryPerformance.is_active == True,  # noqa: E712
+        )
+        return len(list(session.exec(statement).all()))
