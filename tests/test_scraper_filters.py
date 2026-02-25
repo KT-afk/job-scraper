@@ -134,3 +134,32 @@ def test_strip_markdown_removes_bold():
 def test_strip_markdown_passthrough_plain_text():
     text = "We are looking for a junior engineer."
     assert _strip_markdown(text) == text
+
+
+def test_strip_markdown_removes_italic():
+    assert _strip_markdown("*important* detail") == "important detail"
+
+
+# ---------------------------------------------------------------------------
+# Functional filter tests (calling _is_excluded / _is_junk directly)
+# ---------------------------------------------------------------------------
+
+from src.scraper import _is_excluded, _is_junk
+
+
+def test_written_out_phrase_triggers_is_excluded():
+    """Written-out year phrase in text must cause _is_excluded to return True."""
+    result = {"title": "", "text": "Requires minimum 3 years of experience in Python."}
+    assert _is_excluded(result) is True
+
+
+def test_finance_role_keyword_triggers_is_excluded():
+    """A title containing a finance role keyword must cause _is_excluded to return True."""
+    result = {"title": "Senior Accounting Manager", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_aggregator_title_triggers_is_junk():
+    """A title containing an aggregator title pattern must cause _is_junk to return True."""
+    result = {"url": "https://example.com/page", "title": "Remote Jobs 2025"}
+    assert _is_junk(result) is True
