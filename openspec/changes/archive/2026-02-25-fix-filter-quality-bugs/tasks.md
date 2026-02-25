@@ -26,4 +26,4 @@
 ## 5. Verification
 
 - [x] 5.1 Run full test suite (`.venv/bin/pytest -v`) — all existing 30 tests plus new tests must pass
-- [ ] 5.2 Commit all changes with descriptive message
+- [x] 5.2 Commit all changes with descriptive message
