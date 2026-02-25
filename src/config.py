@@ -269,6 +269,17 @@ VISA_KEYWORDS: list[str] = [
     "relocation package",
 ]
 
+VISA_NEGATIONS: list[str] = [
+    "not eligible",
+    "no sponsorship",
+    "does not sponsor",
+    "unable to sponsor",
+    "cannot sponsor",
+    "not able to sponsor",
+    "not sponsoring",
+    "without sponsorship",
+]
+
 REMOTE_KEYWORDS: list[str] = [
     "remote",
     "work from home",

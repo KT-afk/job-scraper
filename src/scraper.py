@@ -26,6 +26,7 @@ from src.config import (
     REMOTE_KEYWORDS,
     ROLES,
     VISA_KEYWORDS,
+    VISA_NEGATIONS,
 )
 from src.agent import reflect
 from src.ai_analysis import analyze_job
@@ -75,10 +76,13 @@ def _detect_visa(result: dict[str, Any]) -> bool:
     """
     Return True if the job text or location tag indicates visa sponsorship.
     Also triggers when the search location was 'visa sponsorship'.
+    Negation phrases (e.g. 'not eligible for sponsorship') return False.
     """
     if "visa" in result.get("location_searched", "").lower():
         return True
     haystack = f"{result.get('title', '')} {result.get('text', '')}".lower()
+    if any(neg in haystack for neg in VISA_NEGATIONS):
+        return False
     return any(kw.lower() in haystack for kw in VISA_KEYWORDS)
 
 
@@ -112,7 +116,7 @@ def run_scrape() -> list[JobPosting]:
     skipped_excluded = 0
     skipped_junk = 0
     skipped_duplicate = 0
-
+    query_found: dict[str, int] = {}
     for result in raw_results:
         # --- Step 1: Drop aggregator / listing pages ---
         if _is_junk(result):
@@ -124,7 +128,9 @@ def run_scrape() -> list[JobPosting]:
         if _is_excluded(result):
             skipped_excluded += 1
             continue
-
+        
+        q = result["role"]
+        query_found[q] = query_found.get(q, 0) + 1
         # --- Step 3: Deduplicate by Exa ID (URL-based) ---
         if is_known(result["id"]):
             skipped_duplicate += 1
@@ -163,11 +169,8 @@ def run_scrape() -> list[JobPosting]:
     # --- Record per-query performance stats ---
     today = _date.today()
     baseline_set = set(ROLES)
-    query_found: dict[str, int] = {}
     query_kept: dict[str, int] = {}
-    for result in raw_results:
-        q = result["role"]
-        query_found[q] = query_found.get(q, 0) + 1
+    
     for job in new_jobs:
         q = job.role
         query_kept[q] = query_kept.get(q, 0) + 1
