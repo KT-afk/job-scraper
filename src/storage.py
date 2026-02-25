@@ -38,7 +38,7 @@ import urllib.parse
 from datetime import date as _date, datetime, timedelta, timezone
 from typing import Optional, Sequence
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, func
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from src.config import DATABASE_URL
@@ -301,7 +301,8 @@ def upsert_query_performance(
             existing.jobs_found = jobs_found
             existing.jobs_kept = jobs_kept
             existing.junk_rate = junk_rate
-            existing.avg_ai_score = avg_ai_score
+            if avg_ai_score is not None:
+                existing.avg_ai_score = avg_ai_score
             session.add(existing)
         else:
             row = QueryPerformance(
@@ -387,7 +388,7 @@ def insert_agent_query(query: str) -> None:
 def count_active_agent_queries() -> int:
     """Return the count of currently active agent-generated queries."""
     with Session(_engine) as session:
-        statement = select(QueryPerformance).where(
+        statement = select(func.count()).select_from(QueryPerformance).where(
             QueryPerformance.source == "agent",
             QueryPerformance.is_active == True,  # noqa: E712
         )
