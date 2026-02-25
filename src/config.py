@@ -187,6 +187,10 @@ EXCLUDE_DOMAINS: list[str] = [
     "dev.to",
     "hackernews",
     "news.ycombinator.com",
+    "rubyonremote.com",
+    "jobstreet.com.sg",
+    "remoterocketship.com",
+    "workatastartup.com",
     # Non-SWE job boards
     "wfhremoteboard.com",
     "hiresociall.com",
@@ -214,6 +218,10 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "transcription",
     "proofreader",
     "translator",
+    "accounting",
+    "bookkeeping",
+    "payroll",
+    "finance manager",
 ]
 
 # Merge role keywords into the main exclude list
@@ -260,6 +268,11 @@ EXCLUDE_TITLE_PATTERNS: list[str] = [
     "500+",
     "200+",
     "100+",
+    # Aggregator-style job listing titles
+    "remote jobs",
+    " developer jobs",
+    " engineer jobs",
+    "remote jobs 2026",
 ]
 
 # ------------------------------------------------------------------

@@ -86,3 +86,51 @@ def test_written_out_within_target_not_excluded():
     # TARGET_MAX_YEARS is 2, so "2 or more years" must NOT be in the list
     assert "2 or more years" not in EXCLUDE_KEYWORDS
     assert "minimum 2 years" not in EXCLUDE_KEYWORDS
+
+
+# ---------------------------------------------------------------------------
+# Filter list extensions (Task 3)
+# ---------------------------------------------------------------------------
+
+from src.config import EXCLUDE_DOMAINS, EXCLUDE_ROLE_KEYWORDS, EXCLUDE_TITLE_PATTERNS
+
+
+def test_missing_domains_present():
+    assert "rubyonremote.com" in EXCLUDE_DOMAINS
+    assert "jobstreet.com.sg" in EXCLUDE_DOMAINS
+    assert "remoterocketship.com" in EXCLUDE_DOMAINS
+    assert "workatastartup.com" in EXCLUDE_DOMAINS
+
+
+def test_non_swe_role_keywords_present():
+    for kw in ["accounting", "bookkeeping", "payroll", "finance manager"]:
+        assert kw in EXCLUDE_ROLE_KEYWORDS
+
+
+def test_aggregator_title_patterns_present():
+    for pat in ["remote jobs", " developer jobs", " engineer jobs", "remote jobs 2026"]:
+        assert pat in EXCLUDE_TITLE_PATTERNS
+
+
+# ---------------------------------------------------------------------------
+# _strip_markdown (Task 4)
+# ---------------------------------------------------------------------------
+
+from src.scraper import _strip_markdown
+
+
+def test_strip_markdown_removes_h2_header():
+    assert _strip_markdown("## About Us\nWe build things.") == "About Us\nWe build things."
+
+
+def test_strip_markdown_removes_h1_header():
+    assert _strip_markdown("# Title\nBody text") == "Title\nBody text"
+
+
+def test_strip_markdown_removes_bold():
+    assert _strip_markdown("**Requirements:** Python") == "Requirements: Python"
+
+
+def test_strip_markdown_passthrough_plain_text():
+    text = "We are looking for a junior engineer."
+    assert _strip_markdown(text) == text

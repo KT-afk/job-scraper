@@ -15,6 +15,7 @@ Orchestrates one full scrape cycle:
 from __future__ import annotations
 
 import json
+import re
 from datetime import date as _date
 from typing import Any
 
@@ -40,6 +41,14 @@ from src.storage import (
     update_job_analysis,
     upsert_query_performance,
 )
+
+
+def _strip_markdown(text: str) -> str:
+    """Remove common markdown formatting from Exa page text before storing as snippet."""
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)  # ATX headers
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)                 # bold
+    text = re.sub(r"\*(.*?)\*", r"\1", text)                     # italic
+    return text
 
 
 def _is_excluded(result: dict[str, Any]) -> bool:
@@ -148,7 +157,7 @@ def run_scrape() -> list[JobPosting]:
             title=result["title"],
             published=result.get("published"),
             author=result.get("author"),
-            snippet=result.get("text", ""),
+            snippet=_strip_markdown(result.get("text", "")),
             role=result["role"],
             discipline=discipline,
             location=result["location_searched"],
