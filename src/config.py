@@ -273,11 +273,16 @@ VISA_NEGATIONS: list[str] = [
     "not eligible",
     "no sponsorship",
     "does not sponsor",
+    "do not sponsor",
     "unable to sponsor",
     "cannot sponsor",
     "not able to sponsor",
     "not sponsoring",
     "without sponsorship",
+    "sponsorship is not available",
+    "not provide sponsorship",
+    "ineligible for sponsorship",
+    "visa sponsorship is not offered",
 ]
 
 REMOTE_KEYWORDS: list[str] = [

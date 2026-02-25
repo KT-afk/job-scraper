@@ -43,3 +43,21 @@ def test_visa_no_keywords_returns_false():
         "text": "Great place to work. Competitive salary.",
     }
     assert _detect_visa(result) is False
+
+
+def test_visa_negation_do_not_sponsor_returns_false():
+    result = {
+        "location_searched": "Singapore",
+        "title": "Junior Engineer",
+        "text": "We do not sponsor visa sponsorship applications for this role.",
+    }
+    assert _detect_visa(result) is False
+
+
+def test_visa_negation_ineligible_returns_false():
+    result = {
+        "location_searched": "Singapore",
+        "title": "Software Developer",
+        "text": "Applicants must be ineligible for sponsorship. We will sponsor only permanent residents.",
+    }
+    assert _detect_visa(result) is False
