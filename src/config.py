@@ -126,9 +126,16 @@ EXCLUDE_LOCATIONS: list[str] = [
 
 # Combined exclude list (location + seniority, plus generated year patterns).
 def _build_exclude_keywords() -> list[str]:
-    years = [f"{y}+ years" for y in range(TARGET_MAX_YEARS + 1, 16)]
-    years += [f"{y}+ year" for y in range(TARGET_MAX_YEARS + 1, 16)]
-    return EXCLUDE_LOCATIONS + EXCLUDE_SENIORITY + years
+    numeric = [f"{y}+ years" for y in range(TARGET_MAX_YEARS + 1, 16)]
+    numeric += [f"{y}+ year" for y in range(TARGET_MAX_YEARS + 1, 16)]
+    written = []
+    for y in range(TARGET_MAX_YEARS + 1, 16):
+        written += [
+            f"{y} or more years",
+            f"minimum {y} years",
+            f"at least {y} years",
+        ]
+    return EXCLUDE_LOCATIONS + EXCLUDE_SENIORITY + numeric + written
 
 EXCLUDE_KEYWORDS: list[str] = _build_exclude_keywords()
 

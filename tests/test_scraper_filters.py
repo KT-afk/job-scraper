@@ -61,3 +61,28 @@ def test_visa_negation_ineligible_returns_false():
         "text": "Applicants must be ineligible for sponsorship. We will sponsor only permanent residents.",
     }
     assert _detect_visa(result) is False
+
+
+from src.config import EXCLUDE_KEYWORDS
+
+
+def test_written_out_years_excluded():
+    assert "3 or more years" in EXCLUDE_KEYWORDS
+    assert "minimum 5 years" in EXCLUDE_KEYWORDS
+    assert "at least 4 years" in EXCLUDE_KEYWORDS
+
+
+def test_numeric_years_still_excluded():
+    assert "3+ years" in EXCLUDE_KEYWORDS
+    assert "10+ years" in EXCLUDE_KEYWORDS
+
+
+def test_written_out_max_boundary():
+    assert "15 or more years" in EXCLUDE_KEYWORDS
+    assert "minimum 15 years" in EXCLUDE_KEYWORDS
+
+
+def test_written_out_within_target_not_excluded():
+    # TARGET_MAX_YEARS is 2, so "2 or more years" must NOT be in the list
+    assert "2 or more years" not in EXCLUDE_KEYWORDS
+    assert "minimum 2 years" not in EXCLUDE_KEYWORDS
