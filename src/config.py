@@ -19,7 +19,7 @@ EXA_API_KEY: str = os.getenv("EXA_API_KEY", "")
 # Notifications
 # ------------------------------------------------------------------
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID: str   = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
 # Public URL of the web UI — shown at the bottom of Telegram digests.
 # Leave blank if you're not hosting the web UI publicly.
@@ -68,9 +68,7 @@ ROLES: list[str] = [q for queries in DISCIPLINE_QUERIES.values() for q in querie
 
 # Mapping from query string back to discipline (for tagging DB rows).
 QUERY_TO_DISCIPLINE: dict[str, str] = {
-    q: disc
-    for disc, queries in DISCIPLINE_QUERIES.items()
-    for q in queries
+    q: disc for disc, queries in DISCIPLINE_QUERIES.items() for q in queries
 }
 
 # ------------------------------------------------------------------
@@ -79,7 +77,7 @@ QUERY_TO_DISCIPLINE: dict[str, str] = {
 LOCATIONS: list[str] = [
     "Singapore",
     "remote",
-    "visa sponsorship",   # catches global roles that sponsor visas
+    "visa sponsorship",  # catches global roles that sponsor visas
 ]
 
 # ------------------------------------------------------------------
@@ -87,7 +85,7 @@ LOCATIONS: list[str] = [
 # ------------------------------------------------------------------
 # Targeting ~0–1 year experience (new grad / junior).
 # Jobs requiring more than this are excluded.
-TARGET_MAX_YEARS: int = 2   # exclude "X+ years" where X > this
+TARGET_MAX_YEARS: int = 2  # exclude "X+ years" where X > this
 
 # Keywords in title/snippet that indicate too-senior a role.
 # These are checked case-insensitively.
@@ -124,20 +122,11 @@ EXCLUDE_LOCATIONS: list[str] = [
     "Gurgaon",
 ]
 
-# Combined exclude list (location + seniority, plus generated year patterns).
-def _build_exclude_keywords() -> list[str]:
-    numeric = [f"{y}+ years" for y in range(TARGET_MAX_YEARS + 1, 16)]
-    numeric += [f"{y}+ year" for y in range(TARGET_MAX_YEARS + 1, 16)]
-    written = []
-    for y in range(TARGET_MAX_YEARS + 1, 16):
-        written += [
-            f"{y} or more years",
-            f"minimum {y} years",
-            f"at least {y} years",
-        ]
-    return EXCLUDE_LOCATIONS + EXCLUDE_SENIORITY + numeric + written
 
-EXCLUDE_KEYWORDS: list[str] = _build_exclude_keywords()
+# Combined exclude list (location + seniority keywords).
+# Note: numeric "X+ years" patterns are now handled by the regex-based
+# _exceeds_experience_limit() in scraper.py, which is more accurate.
+EXCLUDE_KEYWORDS: list[str] = EXCLUDE_LOCATIONS + EXCLUDE_SENIORITY
 
 # ------------------------------------------------------------------
 # Junk result filtering
@@ -148,7 +137,12 @@ EXCLUDE_KEYWORDS: list[str] = _build_exclude_keywords()
 EXCLUDE_DOMAINS: list[str] = [
     # Job listing aggregators
     "linkedin.com/jobs/search",
+    "linkedin.com/jobs/",
+    "sg.linkedin.com/jobs",
+    "ca.linkedin.com/jobs",
+    "mx.linkedin.com/jobs",
     "indeed.com/jobs",
+    "ca.indeed.com",
     "glassdoor.com/Jobs",
     "glassdoor.com/job-listing",
     "glassdoor.com/listings",
@@ -161,6 +155,7 @@ EXCLUDE_DOMAINS: list[str] = [
     "builtinseattle.com/jobs",
     "builtinaustin.com/jobs",
     "builtincolorado.com/jobs",
+    "builtinlondon.uk/job",
     "levels.fyi/jobs",
     "h1bconnect.com",
     "h1bdata.info",
@@ -173,6 +168,7 @@ EXCLUDE_DOMAINS: list[str] = [
     "hired.com/jobs",
     "angel.co/jobs",
     "wellfound.com/jobs",
+    "wellfound.com/role/",
     "otta.com/jobs",
     "remoteok.com",
     "weworkremotely.com",
@@ -189,13 +185,59 @@ EXCLUDE_DOMAINS: list[str] = [
     "news.ycombinator.com",
     "rubyonremote.com",
     "jobstreet.com.sg",
+    "jobstreetexpress.com",
     "remoterocketship.com",
     "workatastartup.com",
+    "jora.com/",
+    "trovit.com",
+    "arc.dev/remote-jobs/",
+    "turing.com/jobs/",
+    "devjobsscanner.com",
+    "opentoworkremote.com",
+    "jobright.ai",
+    "exa.ai/library/",
+    "simplify.jobs/l/",
+    "visasponsor.jobs/api/jobs",
+    "japan-dev.com/japan-jobs",
+    "findajob.dwp.gov.uk",
+    "remotive.com",
+    "wayup.com",
+    "github.com/SimplifyJobs",
+    "foundit.sg",
+    "jaabz.com",
+    "pyjobs.com",
+    "themuse.com",
+    "rkycareers.com",
+    "jobsite.co.uk",
+    "meet.jobs",  # re-lists old/expired jobs
+    "workingnomads.com",
+    "weekday.works",
+    "hubmub.com",
+    "prosple.com",
+    "sg.prosple.com",
+    "beehiiv.com",
+    "recruit.hirebridge.com",
     # Non-SWE job boards
     "wfhremoteboard.com",
     "hiresociall.com",
     "workingmomjobs.com",
     "flexjobs.com",
+    "jobgether.com",  # aggregator listing pages
+    "geekladder.com",  # company-page stub, not a job posting
+    "joindevops.com",  # job board for DevOps roles (aggregator)
+    "optnation.com",  # H1B/visa aggregator
+    "naukri.com",  # India job board
+    "dr.job",  # job aggregator
+    "freelancer.com",  # freelance platform, not SWE jobs
+    "vanhack.com",  # aggregator / relocation platform
+    "arbeitnow.com",  # Germany visa-sponsorship aggregator
+    "jobsbac.com",
+    "jobisite.com",
+    "rise.com/jobs",  # generic job board
+    "himalayas.app",  # remote job board
+    "crossover.com",  # aggregator
+    "reeracoen.com",  # Japan/SG agency aggregator
+    "hitmarker.net",  # gaming-industry job board
 ]
 
 # Title/snippet keywords that indicate a non-SWE role.
@@ -232,19 +274,26 @@ EXCLUDE_KEYWORDS = EXCLUDE_KEYWORDS + EXCLUDE_ROLE_KEYWORDS
 EXCLUDE_TITLE_PATTERNS: list[str] = [
     # Aggregator-style titles
     "jobs in singapore",
+    "jobs in malaysia",
+    "jobs in new zealand",
+    "jobs in uk",
+    "jobs in japan",
+    "jobs in europe",
+    "jobs in germany",
     "jobs with salaries",
     "best remote",
     "top remote",
     "remote jobs 2025",
     "remote jobs 2024",
-    "engineering jobs",           # e.g. "H1B Engineering Jobs | Find..."
+    "remote jobs 2026",
+    "engineering jobs",  # e.g. "H1B Engineering Jobs | Find..."
     "find h-1b",
     "h1b sponsorship",
     "job board",
     "jobs near you",
     "search jobs",
     "browse jobs",
-    "apply now",                  # generic CTA pages
+    "apply now",  # generic CTA pages
     "salary guide",
     "salary report",
     "hiring now",
@@ -261,8 +310,8 @@ EXCLUDE_TITLE_PATTERNS: list[str] = [
     "interview questions",
     "interview tips",
     # Plural listing indicators
-    " jobs | ",                   # e.g. "Backend Jobs | Glassdoor"
-    " jobs - ",                   # e.g. "Junior Jobs - Indeed"
+    " jobs | ",  # e.g. "Backend Jobs | Glassdoor"
+    " jobs - ",  # e.g. "Junior Jobs - Indeed"
     "3000+",
     "1000+",
     "500+",
@@ -272,7 +321,22 @@ EXCLUDE_TITLE_PATTERNS: list[str] = [
     "remote jobs",
     " developer jobs",
     " engineer jobs",
-    "remote jobs 2026",
+    "new grad positions",
+    "visa sponsorship jobs",
+    "find visa sponsorship",
+    "tech jobs with visa",
+    "jobs with visa sponsorship",
+    # Known junk page titles
+    "careers at cisco",
+    "visa u.s. careers",
+    "visa students and early careers",
+    "job vacancies in",
+    "job offers in",
+    "vacancies in",
+    "empleos de ",  # Spanish listing pages
+    "entry level jobs in",
+    "architecture jobs in",
+    "fresh graduate",  # listing pages (e.g. "Fresh Graduate SWE jobs in...")
 ]
 
 # ------------------------------------------------------------------
@@ -322,6 +386,10 @@ RESULTS_PER_QUERY: int = 10
 # Only return pages crawled within the last N days.
 CRAWL_DAYS_BACK: int = 1
 
+# Drop jobs whose published date is older than this many days.
+# Jobs with no published date are allowed through (Exa often omits it).
+MAX_JOB_AGE_DAYS: int = 90
+
 SEARCH_TYPE: str = "auto"
 
 # Characters of page text to fetch per result.
@@ -349,3 +417,102 @@ ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 # ------------------------------------------------------------------
 SCHEDULE_HOUR: int = 8
 SCHEDULE_MINUTE: int = 0
+
+# ------------------------------------------------------------------
+# ATS company slugs — direct API sources
+# Add/remove companies here to control which career pages we scrape.
+# ------------------------------------------------------------------
+
+GREENHOUSE_COMPANIES: list[str] = [
+    "canva",
+    "figma",
+    "notion",
+    "stripe",
+    "coinbase",
+    "airbnb",
+    "dropbox",
+    "hubspot",
+    "asana",
+    "twilio",
+    "zendesk",
+    "cloudflare",
+    "hashicorp",
+    "mongodb",
+    "elastic",
+    "gitlab",
+    "automattic",
+    "squarespace",
+    "brex",
+    "robinhood",
+    "plaid",
+    "affirm",
+    "checkr",
+    "rippling",
+    "lattice",
+    "gusto",
+    "benchling",
+    "samsara",
+    "podium",
+    "greenhouse",
+]
+
+LEVER_COMPANIES: list[str] = [
+    "datadog",
+    "carta",
+    "mixpanel",
+    "segment",
+    "amplitude",
+    "heap",
+    "retool",
+    "glean",
+    "scale-ai",
+    "weights-biases",
+    "anyscale",
+    "prefect",
+    "dbt-labs",
+    "airbyte",
+    "mux",
+    "stytch",
+    "courier",
+    "knock",
+    "liveblocks",
+    "baseten",
+]
+
+ASHBY_COMPANIES: list[str] = [
+    "linear",
+    "vercel",
+    "supabase",
+    "railway",
+    "turso",
+    "trigger",
+    "inngest",
+    "posthog",
+    "metabase",
+    "cal",
+    "dub",
+    "plane",
+    "opencollective",
+    "replit",
+    "cursor",
+    "codeium",
+    "sourcegraph",
+    "grafbase",
+    "highlight",
+    "infisical",
+]
+
+# Title substrings that indicate a junior/entry-level role.
+# ATS APIs return ALL jobs — we pre-filter to these before the main pipeline.
+ATS_JUNIOR_SIGNALS: list[str] = [
+    "junior",
+    "entry level",
+    "entry-level",
+    "graduate",
+    "grad ",
+    "new grad",
+    "associate",
+    "early career",
+    "intern",
+    "apprentice",
+]
