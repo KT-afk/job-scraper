@@ -38,7 +38,7 @@ import urllib.parse
 from datetime import date as _date, datetime, timedelta, timezone
 from typing import Optional, Sequence
 
-from sqlalchemy import UniqueConstraint, func
+from sqlalchemy import UniqueConstraint, func, text
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from src.config import DATABASE_URL
@@ -171,8 +171,17 @@ _engine = _make_engine()
 
 
 def init_db() -> None:
-    """Create all tables if they don't exist yet."""
+    """Create all tables if they don't exist yet, and apply additive migrations."""
     SQLModel.metadata.create_all(_engine)
+    # Additive column migrations — safe to run on every startup.
+    # ADD COLUMN IF NOT EXISTS is idempotent on Postgres.
+    _migrations = [
+        "ALTER TABLE jobposting ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'exa'",
+    ]
+    with _engine.connect() as conn:
+        for stmt in _migrations:
+            conn.execute(text(stmt))
+        conn.commit()
 
 
 # ---------------------------------------------------------------------------
