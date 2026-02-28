@@ -16,21 +16,24 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date as _date
+from datetime import date as _date, timedelta
 from typing import Any
 
 from src.config import (
     EXCLUDE_DOMAINS,
     EXCLUDE_KEYWORDS,
     EXCLUDE_TITLE_PATTERNS,
+    MAX_JOB_AGE_DAYS,
     QUERY_TO_DISCIPLINE,
     REMOTE_KEYWORDS,
     ROLES,
+    TARGET_MAX_YEARS,
     VISA_KEYWORDS,
     VISA_NEGATIONS,
 )
 from src.agent import reflect
 from src.ai_analysis import analyze_job
+from src.ats_client import fetch_all_ats_jobs
 from src.exa_client import fetch_jobs
 from src.storage import (
     JobPosting,
@@ -46,36 +49,183 @@ from src.storage import (
 def _strip_markdown(text: str) -> str:
     """Remove common markdown formatting from Exa page text before storing as snippet."""
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)  # ATX headers
-    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)                 # bold
-    text = re.sub(r"\*(.*?)\*", r"\1", text)                     # italic
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)  # bold
+    text = re.sub(r"\*(.*?)\*", r"\1", text)  # italic
     return text
+
+
+def _is_too_old(result: dict[str, Any]) -> bool:
+    """
+    Return True if the published date is older than MAX_JOB_AGE_DAYS.
+    Jobs with no published date are allowed through — Exa often omits it
+    for legitimate postings, so we don't want to over-filter.
+    """
+    published = result.get("published")
+    if not published:
+        return False
+    try:
+        # Exa returns ISO-8601 strings like "2026-01-14T00:00:00.000Z"
+        pub_date = _date.fromisoformat(published[:10])
+        cutoff = _date.today() - timedelta(days=MAX_JOB_AGE_DAYS)
+        return pub_date < cutoff
+    except (ValueError, TypeError):
+        return False
 
 
 def _is_excluded(result: dict[str, Any]) -> bool:
     """
     Return True if the result should be dropped.
-    Checks title + snippet against EXCLUDE_KEYWORDS (case-insensitive).
+
+    Two sub-checks:
+    1. Flat keyword match — seniority titles, India locations, non-SWE roles
+       (checked against EXCLUDE_KEYWORDS, case-insensitive).
+    2. Experience requirement — regex-parses any "X years of experience"
+       pattern (including ranges and written-out numbers) and drops the
+       result if the minimum required experience exceeds TARGET_MAX_YEARS.
     """
     haystack = f"{result.get('title', '')} {result.get('text', '')}".lower()
-    return any(kw.lower() in haystack for kw in EXCLUDE_KEYWORDS)
+
+    # --- 1. Flat keyword check ---
+    if any(kw.lower() in haystack for kw in EXCLUDE_KEYWORDS):
+        return True
+
+    # --- 2. Experience requirement check ---
+    if _exceeds_experience_limit(haystack):
+        return True
+
+    return False
+
+
+# Written-out number words → digit values (up to 15).
+_WORD_TO_NUM: dict[str, int] = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+}
+
+# Matches patterns like:
+#   "2 years", "2+ years", "2-4 years", "2 to 4 years",
+#   "two years", "three or more years", "minimum 2 years",
+#   "at least 3 years", "2 years of experience"
+_EXP_RE = re.compile(
+    r"""
+    (?:
+        # Optional preamble: "minimum", "at least", "requires", etc.
+        (?:minimum|at\s+least|requires?|need|must\s+have|ideally|preferably)
+        \s+
+    )?
+    # The number part — digit(s) or written-out word
+    (?P<lo>
+        \d+                          # plain digit(s): 2, 10
+        | (?:"""
+    + "|".join(_WORD_TO_NUM.keys())
+    + r""")
+    )
+    # Optional range upper bound: "2-4", "2 to 4", "2 or more"
+    (?:
+        \s*[-–]\s*\d+
+        | \s+to\s+\d+
+        | \s+or\s+more
+        | \+                         # "2+" immediately after digit
+    )?
+    \s+years?                        # "year" or "years"
+    (?:\s+of)?                       # optional "of"
+    (?:\s+(?:relevant\s+|related\s+|professional\s+|work\s+)?experience)?
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+
+def _exceeds_experience_limit(haystack: str) -> bool:
+    """
+    Return True if the text contains an experience requirement that
+    exceeds TARGET_MAX_YEARS.
+
+    Uses the LOWER bound of any range (e.g. "1-3 years" → 1, allowed;
+    "2-4 years" → 2, allowed if TARGET_MAX_YEARS >= 2).
+    Ignores statements that are clearly about the company's history
+    ("we have 10 years of experience building...").
+    """
+    for m in _EXP_RE.finditer(haystack):
+        lo_str = m.group("lo")
+        # Convert written-out word to int if needed
+        lo = _WORD_TO_NUM.get(lo_str.lower(), None)
+        if lo is None:
+            try:
+                lo = int(lo_str)
+            except ValueError:
+                continue
+
+        # Heuristic: skip if the match is preceded by "our", "we have",
+        # "with", "company" — these describe the company, not requirements.
+        start = max(0, m.start() - 40)
+        prefix = haystack[start : m.start()].lower()
+        if any(
+            tok in prefix
+            for tok in ("our ", "we have", "we've", "with over", "company", "firm")
+        ):
+            continue
+
+        if lo > TARGET_MAX_YEARS:
+            return True
+
+    return False
+
+
+CLOSED_JOB_SIGNALS: list[str] = [
+    "no longer accepting applicants",
+    "no longer accepting applications",
+    "this job is no longer",
+    "position has been filled",
+    "position is no longer available",
+    "this position is no longer",
+    "this role is no longer",
+    "listing is no longer",
+    "job listing has expired",
+    "job has expired",
+    "posting has expired",
+    "posting is expired",
+    "application period has closed",
+    "applications are closed",
+    "vacancy has been filled",
+    "this vacancy is closed",
+    "an error has occurred",  # Cisco-style error pages
+]
 
 
 def _is_junk(result: dict[str, Any]) -> bool:
     """
     Return True if the result is an aggregator/listing page rather than
-    an actual individual job posting.
+    an actual individual job posting, or if the posting is closed/expired.
 
-    Two checks:
+    Checks:
       1. URL contains a known aggregator domain/path pattern.
       2. Title matches a known listing/article pattern.
+      3. Snippet contains a closed/expired job signal.
     """
-    url   = result.get("url", "").lower()
+    url = result.get("url", "").lower()
     title = result.get("title", "").lower()
+    text = result.get("text", "").lower()
 
     if any(domain.lower() in url for domain in EXCLUDE_DOMAINS):
         return True
 
     if any(pat.lower() in title for pat in EXCLUDE_TITLE_PATTERNS):
+        return True
+
+    if any(signal in text for signal in CLOSED_JOB_SIGNALS):
         return True
 
     return False
@@ -117,27 +267,43 @@ def run_scrape() -> list[JobPosting]:
     agent_queries = [r.query for r in agent_query_rows]
 
     print("\n[Scraper] Starting fetch from Exa...")
-    print(f"[Scraper] Baseline queries: {len(ROLES)} | Agent queries: {len(agent_queries)}")
+    print(
+        f"[Scraper] Baseline queries: {len(ROLES)} | Agent queries: {len(agent_queries)}"
+    )
     raw_results = fetch_jobs(extra_queries=agent_queries)
     print(f"[Scraper] Exa returned {len(raw_results)} raw results.")
+
+    print("[Scraper] Fetching from ATS sources (Greenhouse, Lever, Ashby)...")
+    ats_results = fetch_all_ats_jobs()
+    raw_results = raw_results + ats_results
+    print(f"[Scraper] Total raw results after ATS merge: {len(raw_results)}")
 
     new_jobs: list[JobPosting] = []
     skipped_excluded = 0
     skipped_junk = 0
+    skipped_old = 0
     skipped_duplicate = 0
     query_found: dict[str, int] = {}
     for result in raw_results:
-        # --- Step 1: Drop aggregator / listing pages ---
+        # --- Step 1: Drop aggregator / listing / closed pages ---
         if _is_junk(result):
             skipped_junk += 1
             print(f"  [JUNK] {result.get('title', '')[:80]}")
             continue
 
-        # --- Step 2: Drop unwanted seniority / location results ---
+        # --- Step 2: Drop jobs older than MAX_JOB_AGE_DAYS ---
+        if _is_too_old(result):
+            skipped_old += 1
+            print(
+                f"  [OLD]  {result.get('published', '')[:10]} {result.get('title', '')[:70]}"
+            )
+            continue
+
+        # --- Step 3: Drop unwanted seniority / location results ---
         if _is_excluded(result):
             skipped_excluded += 1
             continue
-        
+
         q = result["role"]
         query_found[q] = query_found.get(q, 0) + 1
         # --- Step 3: Deduplicate by Exa ID (URL-based) ---
@@ -163,6 +329,7 @@ def run_scrape() -> list[JobPosting]:
             location=result["location_searched"],
             visa_sponsored=visa_sponsored,
             remote_ok=remote_ok,
+            source=result.get("source", "exa"),
         )
         save_job(job)
         new_jobs.append(job)
@@ -171,6 +338,7 @@ def run_scrape() -> list[JobPosting]:
         f"[Scraper] Done. "
         f"New: {len(new_jobs)} | "
         f"Junk skipped: {skipped_junk} | "
+        f"Too old: {skipped_old} | "
         f"Excluded by keyword: {skipped_excluded} | "
         f"Duplicates skipped: {skipped_duplicate}"
     )
@@ -179,7 +347,7 @@ def run_scrape() -> list[JobPosting]:
     today = _date.today()
     baseline_set = set(ROLES)
     query_kept: dict[str, int] = {}
-    
+
     for job in new_jobs:
         q = job.role
         query_kept[q] = query_kept.get(q, 0) + 1
@@ -208,7 +376,9 @@ def run_scrape() -> list[JobPosting]:
                 source = "baseline" if q in baseline_set else "agent"
                 found = query_found.get(q, 0)
                 kept = query_kept.get(q, 0)
-                upsert_query_performance(q, source, today, found, kept, avg_ai_score=avg)
+                upsert_query_performance(
+                    q, source, today, found, kept, avg_ai_score=avg
+                )
         else:
             print("[Scraper] No user profile found — skipping AI analysis.")
 

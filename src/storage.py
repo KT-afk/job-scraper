@@ -51,25 +51,26 @@ from src.config import DATABASE_URL
 class JobPosting(SQLModel, table=True):
     """Represents a single job posting stored in the database."""
 
-    id: str = Field(primary_key=True)         # Exa result ID (URL-based)
+    id: str = Field(primary_key=True)  # Exa result ID (URL-based)
     url: str
     title: str
     published: Optional[str] = None
     author: Optional[str] = None
     snippet: str = ""
-    role: str                                  # raw query string
-    discipline: str = ""                       # Backend / Frontend / FullStack / DevOps / Infra/SRE
+    role: str  # raw query string
+    discipline: str = ""  # Backend / Frontend / FullStack / DevOps / Infra/SRE
     location: str
     visa_sponsored: bool = False
     remote_ok: bool = False
-    seen_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    seen_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     # Application tracking
-    status: str = "none"                       # none/interested/applied/interviewing/offer/rejected/dismissed
+    status: str = (
+        "none"  # none/interested/applied/interviewing/offer/rejected/dismissed
+    )
     notes: str = ""
     # AI analysis (JSON string)
     ai_analysis: Optional[str] = None
+    source: str = "exa"  # 'exa', 'greenhouse', 'lever', 'ashby'
 
 
 class UserProfile(SQLModel, table=True):
@@ -80,7 +81,7 @@ class UserProfile(SQLModel, table=True):
     location: str = ""
     visa_status: str = ""
     skills: str = ""
-    projects: str = "[]"                       # JSON array of {name, desc}
+    projects: str = "[]"  # JSON array of {name, desc}
 
 
 class QueryPerformance(SQLModel, table=True):
@@ -89,19 +90,20 @@ class QueryPerformance(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("query", "run_date"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    query: str                              # the Exa query string
-    source: str                             # 'baseline' or 'agent'
-    run_date: str                           # ISO date string e.g. "2026-02-24"
+    query: str  # the Exa query string
+    source: str  # 'baseline' or 'agent'
+    run_date: str  # ISO date string e.g. "2026-02-24"
     jobs_found: int = 0
     jobs_kept: int = 0
-    junk_rate: Optional[float] = None       # 1 - jobs_kept/jobs_found
+    junk_rate: Optional[float] = None  # 1 - jobs_kept/jobs_found
     avg_ai_score: Optional[float] = None
-    is_active: bool = True                  # agent can retire by setting False
+    is_active: bool = True  # agent can retire by setting False
 
 
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
+
 
 def _make_engine():
     """
@@ -125,14 +127,15 @@ def _make_engine():
     # urllib.parse.urlparse rejects '[' / ']' in passwords (Python 3.14+).
     # Use a regex to extract components directly from the URL instead.
     import re
+
     m = re.match(
-        r"postgresql(?:\+\w+)?://"   # scheme
-        r"([^:@]+)"                  # user (group 1)
-        r"(?::([^@]*))?"             # :password (group 2, optional)
-        r"@([^:/]+)"                 # @host (group 3)
-        r"(?::(\d+))?"               # :port (group 4, optional)
-        r"/([^?]*)"                  # /dbname (group 5)
-        r"(?:\?(.*))?$",             # ?query (group 6, optional)
+        r"postgresql(?:\+\w+)?://"  # scheme
+        r"([^:@]+)"  # user (group 1)
+        r"(?::([^@]*))?"  # :password (group 2, optional)
+        r"@([^:/]+)"  # @host (group 3)
+        r"(?::(\d+))?"  # :port (group 4, optional)
+        r"/([^?]*)"  # /dbname (group 5)
+        r"(?:\?(.*))?$",  # ?query (group 6, optional)
         DATABASE_URL,
     )
     if not m:
@@ -151,14 +154,14 @@ def _make_engine():
                 sslmode = part.split("=", 1)[1]
 
     return create_engine(
-        "postgresql+psycopg://",   # psycopg3 dialect; no creds in the URL
+        "postgresql+psycopg://",  # psycopg3 dialect; no creds in the URL
         connect_args={
-            "host":     host,
-            "port":     int(port) if port else 5432,
-            "dbname":   dbname or "postgres",
-            "user":     urllib.parse.unquote(user),
+            "host": host,
+            "port": int(port) if port else 5432,
+            "dbname": dbname or "postgres",
+            "user": urllib.parse.unquote(user),
             "password": urllib.parse.unquote(password or ""),
-            "sslmode":  sslmode,
+            "sslmode": sslmode,
         },
         echo=False,
     )
@@ -186,7 +189,7 @@ def is_known(job_id: str) -> bool:
 
 def save_job(job: JobPosting) -> None:
     """Persist a new job posting. Silently skips duplicates."""
-    with Session(_engine) as session:
+    with Session(_engine, expire_on_commit=False) as session:
         session.add(job)
         session.commit()
         session.expunge(job)  # keep object usable after session closes
@@ -322,9 +325,7 @@ def get_query_history(days: int = 14) -> list[QueryPerformance]:
     """Return all QueryPerformance rows from the last `days` days."""
     cutoff = (_date.today() - timedelta(days=days)).isoformat()
     with Session(_engine) as session:
-        statement = select(QueryPerformance).where(
-            QueryPerformance.run_date >= cutoff
-        )
+        statement = select(QueryPerformance).where(QueryPerformance.run_date >= cutoff)
         return list(session.exec(statement).all())
 
 
@@ -350,9 +351,7 @@ def get_active_agent_queries() -> list[QueryPerformance]:
 def retire_query(query: str) -> None:
     """Set is_active=False for all rows with this query string."""
     with Session(_engine) as session:
-        statement = select(QueryPerformance).where(
-            QueryPerformance.query == query
-        )
+        statement = select(QueryPerformance).where(QueryPerformance.query == query)
         rows = list(session.exec(statement).all())
         for row in rows:
             row.is_active = False
@@ -388,8 +387,12 @@ def insert_agent_query(query: str) -> None:
 def count_active_agent_queries() -> int:
     """Return the count of currently active agent-generated queries."""
     with Session(_engine) as session:
-        statement = select(func.count()).select_from(QueryPerformance).where(
-            QueryPerformance.source == "agent",
-            QueryPerformance.is_active == True,  # noqa: E712
+        statement = (
+            select(func.count())
+            .select_from(QueryPerformance)
+            .where(
+                QueryPerformance.source == "agent",
+                QueryPerformance.is_active == True,  # noqa: E712
+            )
         )
-        return len(list(session.exec(statement).all()))
+        return session.exec(statement).one()
