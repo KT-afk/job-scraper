@@ -23,6 +23,7 @@ from src.config import (
     EXCLUDE_DOMAINS,
     EXCLUDE_KEYWORDS,
     EXCLUDE_TITLE_PATTERNS,
+    JUNK_SNIPPET_SIGNALS,
     MAX_JOB_AGE_DAYS,
     QUERY_TO_DISCIPLINE,
     REMOTE_KEYWORDS,
@@ -257,6 +258,9 @@ def _is_junk(result: dict[str, Any]) -> bool:
         return True
 
     if any(signal in text for signal in CLOSED_JOB_SIGNALS):
+        return True
+
+    if any(signal.lower() in text for signal in JUNK_SNIPPET_SIGNALS):
         return True
 
     return False

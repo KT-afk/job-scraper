@@ -238,6 +238,27 @@ EXCLUDE_DOMAINS: list[str] = [
     "crossover.com",  # aggregator
     "reeracoen.com",  # Japan/SG agency aggregator
     "hitmarker.net",  # gaming-industry job board
+    # Singapore news media (not job boards)
+    "straitstimes.com",
+    "businesstimes.com.sg",
+    "channelnewsasia.com",
+    "todayonline.com",
+    "asiaone.com",
+    "theindependent.sg",
+    "mothership.sg",
+    "zaobao.com.sg",
+    # General tech/business news (articles, not job postings)
+    "techcrunch.com",
+    "theverge.com",
+    "wired.com",
+    "reuters.com",
+    "bloomberg.com",
+    "theregister.com",
+    "venturebeat.com",
+    "zdnet.com",
+    "cnbc.com",
+    "forbes.com",
+    "businessinsider.com",
 ]
 
 # Title/snippet keywords that indicate a non-SWE role.
@@ -337,6 +358,40 @@ EXCLUDE_TITLE_PATTERNS: list[str] = [
     "entry level jobs in",
     "architecture jobs in",
     "fresh graduate",  # listing pages (e.g. "Fresh Graduate SWE jobs in...")
+    # News article title patterns (not job postings)
+    "% drop in",        # statistics articles, e.g. "90% drop in fresh grads..."
+    "% rise in",
+    "% increase in",
+    "struggling to find",   # e.g. "Diploma holder struggling to find employment..."
+    "diploma holder",       # news about workers, not a job posting
+    "seeking guidance",
+    "help defend",          # e.g. "Mindef to deploy teams to help defend..."
+    "deploy sectoral",
+    "industry traineeship",  # news about traineeship programmes, not postings
+]
+
+# Snippet substrings that indicate a news article rather than a job posting.
+# Exa often returns snippet text in the format "Title | Publication Published: Date".
+# Checked case-insensitively against the result text in _is_junk().
+JUNK_SNIPPET_SIGNALS: list[str] = [
+    "| the straits times",
+    "| channelnewsasia",
+    "| today online",
+    "| todayonline",
+    "| business times",
+    "| mothership",
+    "| asiaone",
+    "| techcrunch",
+    "| the verge",
+    "| reuters",
+    "| bloomberg",
+    "| cnbc",
+    "| forbes",
+    "| business insider",
+    "| venturebeat",
+    "| zdnet",
+    "the straits times published:",
+    "channelnewsasia published:",
 ]
 
 # ------------------------------------------------------------------
