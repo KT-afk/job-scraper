@@ -19,6 +19,7 @@ All other filtering (seniority, location exclude, junk) is done by scraper.py.
 
 from __future__ import annotations
 
+import html as _html
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -38,8 +39,9 @@ _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 def _strip_html(text: str) -> str:
-    """Remove HTML tags and collapse whitespace."""
+    """Remove HTML tags, decode HTML entities, and collapse whitespace."""
     text = _HTML_TAG_RE.sub(" ", text)
+    text = _html.unescape(text)
     return " ".join(text.split())
 
 
@@ -92,7 +94,10 @@ def fetch_greenhouse_jobs(
                 if resp.status_code != 200:
                     continue
                 data = resp.json()
-            except Exception:
+            except (httpx.HTTPError, ValueError):
+                continue
+            except Exception as exc:
+                print(f"[ATS/greenhouse] Unexpected error for {slug!r}: {exc}")
                 continue
 
             for job in data.get("jobs", []):
@@ -165,7 +170,10 @@ def fetch_lever_jobs(
                 jobs = resp.json()
                 if not isinstance(jobs, list):
                     continue
-            except Exception:
+            except (httpx.HTTPError, ValueError):
+                continue
+            except Exception as exc:
+                print(f"[ATS/lever] Unexpected error for {slug!r}: {exc}")
                 continue
 
             for job in jobs:
@@ -193,7 +201,7 @@ def fetch_lever_jobs(
                 location_bucket = _infer_location(location_name)
 
                 description = job.get("descriptionPlain", "") or ""
-                snippet = description[:SNIPPET_MAX_CHARS]
+                snippet = _strip_html(description)[:SNIPPET_MAX_CHARS]
 
                 matched_signal = next(
                     (sig for sig in ATS_JUNIOR_SIGNALS if sig in title.lower()),
@@ -244,7 +252,10 @@ def fetch_ashby_jobs(
                 if resp.status_code != 200:
                     continue
                 data = resp.json()
-            except Exception:
+            except (httpx.HTTPError, ValueError):
+                continue
+            except Exception as exc:
+                print(f"[ATS/ashby] Unexpected error for {slug!r}: {exc}")
                 continue
 
             for job in data.get("jobPostings", []):
@@ -304,14 +315,17 @@ def fetch_all_ats_jobs() -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 
-    for job in (
-        fetch_greenhouse_jobs()
-        + fetch_lever_jobs()
-        + fetch_ashby_jobs()
-    ):
+    gh = fetch_greenhouse_jobs()
+    lv = fetch_lever_jobs()
+    ab = fetch_ashby_jobs()
+
+    for job in gh + lv + ab:
         if job["id"] not in seen_ids:
             seen_ids.add(job["id"])
             results.append(job)
 
-    print(f"[ATS] Fetched {len(results)} junior jobs from ATS sources.")
+    print(
+        f"[ATS] greenhouse={len(gh)}, lever={len(lv)}, ashby={len(ab)}, "
+        f"total={len(results)} junior jobs."
+    )
     return results

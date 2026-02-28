@@ -46,6 +46,37 @@ from src.storage import (
 )
 
 
+# Title keyword → discipline mapping for ATS results (which have no Exa query string).
+# Checked in order; first match wins. Defaults to "FullStack" for generic SWE titles.
+_TITLE_DISCIPLINE: list[tuple[str, str]] = [
+    ("backend", "Backend"),
+    ("back-end", "Backend"),
+    ("back end", "Backend"),
+    ("frontend", "Frontend"),
+    ("front-end", "Frontend"),
+    ("front end", "Frontend"),
+    ("full stack", "FullStack"),
+    ("fullstack", "FullStack"),
+    ("full-stack", "FullStack"),
+    ("devops", "DevOps"),
+    ("dev ops", "DevOps"),
+    ("platform engineer", "DevOps"),
+    ("site reliability", "Infra/SRE"),
+    ("infrastructure", "Infra/SRE"),
+    (" sre", "Infra/SRE"),
+    ("cloud engineer", "Infra/SRE"),
+]
+
+
+def _infer_discipline_from_title(title: str) -> str:
+    """Infer discipline from job title keywords. Used as fallback for ATS results."""
+    t = title.lower()
+    for keyword, discipline in _TITLE_DISCIPLINE:
+        if keyword in t:
+            return discipline
+    return "FullStack"
+
+
 def _strip_markdown(text: str) -> str:
     """Remove common markdown formatting from Exa page text before storing as snippet."""
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)  # ATX headers
@@ -312,7 +343,7 @@ def run_scrape() -> list[JobPosting]:
             continue
 
         # --- Step 3: Enrich with derived fields ---
-        discipline = QUERY_TO_DISCIPLINE.get(result["role"], "")
+        discipline = QUERY_TO_DISCIPLINE.get(result["role"]) or _infer_discipline_from_title(result["title"])
         visa_sponsored = _detect_visa(result)
         remote_ok = _detect_remote(result)
 

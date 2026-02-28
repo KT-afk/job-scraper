@@ -509,7 +509,7 @@ ATS_JUNIOR_SIGNALS: list[str] = [
     "entry level",
     "entry-level",
     "graduate",
-    "grad ",
+    "grad ",  # trailing space prevents matching "gradle"; won't match "Engineer Grad" (EOL)
     "new grad",
     "associate",
     "early career",
