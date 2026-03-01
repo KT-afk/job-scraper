@@ -398,6 +398,34 @@
     }
     .note-btn:hover { color: var(--text); }
 
+    /* grouped sub-rows */
+    .group-subrow td {
+      background: rgba(255,255,255,0.015);
+      padding: 7px 14px 7px 28px;
+      font-size: 12px;
+    }
+    .group-sub-title { color: var(--muted); }
+    .group-sub-title a { color: var(--muted); text-decoration: none; }
+    .group-sub-title a:hover { color: var(--accent); }
+
+    /* expand toggle */
+    .expand-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      margin-left: 8px;
+      vertical-align: middle;
+      transition: all 0.1s;
+    }
+    .expand-btn:hover { border-color: var(--accent); color: var(--text); }
+
     /* top-picks toggle */
     .top-picks-toggle {
       display: inline-flex;
@@ -761,6 +789,129 @@
     updateJob(jobId, { notes: textarea.value });
   }
 
+  // ── Grouping by company + normalized title ──
+  const _groupJobIds = {};  // gi → [jobId, ...] for dismissGroup
+
+  function normalizeTitle(title) {
+    return title.toLowerCase()
+      .replace(/\(.*?\)/g, '')     // strip "(Singapore)", "(Remote)"
+      .replace(/[^\w\s]/g, ' ')   // strip punctuation
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  function groupJobs(jobs) {
+    const map = new Map();
+    for (const job of jobs) {
+      const key = (job.company || '').toLowerCase() + '§' + normalizeTitle(job.title);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(job);
+    }
+    return Array.from(map.values());
+  }
+
+  function bestInGroup(group) {
+    return group.reduce((best, j) =>
+      getScore(j.ai_analysis) >= getScore(best.ai_analysis) ? j : best
+    );
+  }
+
+  // Location tags for the group row: discipline once + all unique location signals
+  function groupLocationTags(group, canonical) {
+    const tags = [];
+    if (canonical.discipline) tags.push(`<span class="tag tag-discipline">${esc(canonical.discipline)}</span>`);
+    let hasSG = false, hasVisa = false, hasRemote = false;
+    for (const j of group) {
+      const loc = (j.location || '').toLowerCase();
+      if (loc.includes('singapore')) hasSG = true;
+      if (j.visa_sponsored) hasVisa = true;
+      if (j.remote_ok) hasRemote = true;
+    }
+    if (hasSG)    tags.push('<span class="tag tag-singapore">SG</span>');
+    if (hasVisa)  tags.push('<span class="tag tag-visa">Visa</span>');
+    if (hasRemote) tags.push('<span class="tag tag-remote">Remote</span>');
+    return tags.join(' ');
+  }
+
+  // Location tags for sub-rows: no discipline (shown on parent)
+  function subLocationTags(job) {
+    const tags = [];
+    const loc = (job.location || '').toLowerCase();
+    if (loc.includes('singapore')) {
+      tags.push('<span class="tag tag-singapore">SG</span>');
+    } else if (!loc.includes('visa') && loc !== 'remote') {
+      tags.push(`<span class="tag tag-location">${esc(job.location)}</span>`);
+    }
+    if (job.visa_sponsored) tags.push('<span class="tag tag-visa">Visa</span>');
+    if (job.remote_ok)      tags.push('<span class="tag tag-remote">Remote</span>');
+    return tags.join(' ');
+  }
+
+  function toggleGroup(gi) {
+    const subrows = document.querySelectorAll(`.group-subrow[data-group="${gi}"]`);
+    const btn = document.querySelector(`.expand-btn[data-group="${gi}"]`);
+    const expanded = btn.dataset.expanded === 'true';
+    subrows.forEach(r => r.style.display = expanded ? 'none' : '');
+    btn.dataset.expanded = String(!expanded);
+    btn.innerHTML = expanded
+      ? `${subrows.length} listings &#9660;`
+      : `${subrows.length} listings &#9650;`;
+  }
+
+  function dismissGroup(gi) {
+    const ids = _groupJobIds[gi] || [];
+    ids.forEach(id => updateJob(id, { status: 'dismissed' }));
+    document.querySelectorAll(`[data-gi="${gi}"], .group-subrow[data-group="${gi}"]`)
+      .forEach(el => {
+        el.classList.add('dismissed');
+        const sel = el.querySelector('.status-select');
+        if (sel) { sel.value = 'dismissed'; sel.dataset.status = 'dismissed'; }
+      });
+  }
+
+  function renderGroupRow(group, gi) {
+    const canonical = bestInGroup(group);
+    const score = getScore(canonical.ai_analysis);
+    const tier = score >= 70 ? 'high' : score >= 45 ? 'mid' : score >= 0 ? 'low' : 'none';
+    const isAnyNew = group.some(j => j.seen_today);
+    _groupJobIds[gi] = group.map(j => j.id);
+
+    const groupRow = `
+      <tr class="${canonical.status === 'dismissed' ? 'dismissed' : ''}" data-tier="${tier}" data-gi="${gi}">
+        <td class="job-title">
+          <a href="${esc(canonical.url)}" target="_blank" rel="noopener">${esc(canonical.title)}</a>
+          ${isAnyNew ? '<span class="new-badge">New</span>' : ''}
+          <button class="expand-btn" data-group="${gi}" data-expanded="false"
+            onclick="toggleGroup(${gi})">${group.length} listings &#9660;</button>
+          ${canonical.company ? `<div class="job-company">${esc(canonical.company)}</div>` : ''}
+          ${canonical.snippet ? `<div class="job-snippet">${esc(canonical.snippet)}</div>` : ''}
+          ${renderAnalysis(canonical.ai_analysis)}
+        </td>
+        <td>${groupLocationTags(group, canonical)}</td>
+        <td class="date-cell">${relativeDate(canonical.published)}</td>
+        <td class="tracking-cell no-strike">
+          <button class="dismiss-btn" onclick="dismissGroup(${gi})">✕ Dismiss All</button>
+        </td>
+        <td class="no-strike">
+          <a class="link-btn" href="${esc(canonical.url)}" target="_blank" rel="noopener">Open ↗</a>
+        </td>
+      </tr>`;
+
+    const subRows = group.map(j => `
+      <tr class="group-subrow ${j.status === 'dismissed' ? 'dismissed' : ''}" data-group="${gi}" style="display:none">
+        <td class="group-sub-title">
+          ↳ <a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
+        </td>
+        <td>${subLocationTags(j)}</td>
+        <td class="date-cell">${relativeDate(j.published)}</td>
+        <td class="tracking-cell no-strike">${renderStatusSelect(j)}</td>
+        <td class="no-strike">
+          <a class="link-btn" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>
+        </td>
+      </tr>`).join('');
+
+    return groupRow + subRows;
+  }
+
   // ── Stats ──
   async function loadStats() {
     const res = await fetch('/api/stats');
@@ -825,36 +976,47 @@
       jobs = jobs.filter(j => getScore(j.ai_analysis) >= TOP_PICK_SCORE);
     }
 
-    // Build rows; inject a divider between top picks and lower-score jobs when sorting by score
+    // Group by company + normalized title
+    const groups = groupJobs(jobs);
+
+    // Divider between top picks and "more in field" — based on group canonical score
     const scoreSorted = sortEl.value === 'score' && !topPicksOnly;
     const dividerIdx = scoreSorted
-      ? jobs.findIndex(j => getScore(j.ai_analysis) < TOP_PICK_SCORE)
+      ? groups.findIndex(g => getScore(bestInGroup(g).ai_analysis) < TOP_PICK_SCORE)
       : -1;
 
-    const COLS = 5; // total columns for colspan
+    const COLS = 5;
 
-    const rows = jobs.map((j, i) => {
-      const score = getScore(j.ai_analysis);
-      const tier = score >= 70 ? 'high' : score >= 45 ? 'mid' : score >= 0 ? 'low' : 'none';
-      const divider = (i === dividerIdx)
+    const rows = groups.flatMap((group, gi) => {
+      const divider = gi === dividerIdx
         ? `<tr class="divider-row"><td colspan="${COLS}">— More in your field —</td></tr>`
         : '';
-      return divider + `
-      <tr class="${j.status === 'dismissed' ? 'dismissed' : ''}" data-tier="${tier}">
-        <td class="job-title">
-          <a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
-          ${j.seen_today ? '<span class="new-badge">New</span>' : ''}
-          ${j.company ? `<div class="job-company">${esc(j.company)}</div>` : ''}
-          ${j.snippet ? `<div class="job-snippet">${esc(j.snippet)}</div>` : ''}
-          ${renderAnalysis(j.ai_analysis)}
-        </td>
-        <td>${locationTags(j)}</td>
-        <td class="date-cell">${relativeDate(j.published)}</td>
-        <td class="tracking-cell no-strike">${renderStatusSelect(j)}</td>
-        <td class="no-strike">
-          <a class="link-btn" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>
-        </td>
-      </tr>`;
+
+      if (group.length === 1) {
+        // Single listing — render as normal row
+        const j = group[0];
+        const score = getScore(j.ai_analysis);
+        const tier = score >= 70 ? 'high' : score >= 45 ? 'mid' : score >= 0 ? 'low' : 'none';
+        return [divider + `
+          <tr class="${j.status === 'dismissed' ? 'dismissed' : ''}" data-tier="${tier}">
+            <td class="job-title">
+              <a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
+              ${j.seen_today ? '<span class="new-badge">New</span>' : ''}
+              ${j.company ? `<div class="job-company">${esc(j.company)}</div>` : ''}
+              ${j.snippet ? `<div class="job-snippet">${esc(j.snippet)}</div>` : ''}
+              ${renderAnalysis(j.ai_analysis)}
+            </td>
+            <td>${locationTags(j)}</td>
+            <td class="date-cell">${relativeDate(j.published)}</td>
+            <td class="tracking-cell no-strike">${renderStatusSelect(j)}</td>
+            <td class="no-strike">
+              <a class="link-btn" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>
+            </td>
+          </tr>`];
+      } else {
+        // Multiple listings for same role — render collapsible group
+        return [divider + renderGroupRow(group, gi)];
+      }
     });
 
     tbody.innerHTML = rows.join('');
