@@ -283,3 +283,106 @@ def test_software_engineer_not_excluded():
     """Ensure legitimate SWE roles are not accidentally excluded."""
     result = {"title": "Software Engineer", "text": ""}
     assert _is_excluded(result) is False
+
+
+# ---------------------------------------------------------------------------
+# Edge case: role keywords in snippet must NOT exclude legitimate SWE roles
+# ---------------------------------------------------------------------------
+
+
+def test_swe_job_with_quality_assurance_in_snippet_not_excluded():
+    """A junior SWE role whose description mentions QA processes should pass."""
+    result = {
+        "title": "Junior Backend Engineer",
+        "text": "You will work closely with our quality assurance and test engineering teams.",
+    }
+    assert _is_excluded(result) is False
+
+
+def test_swe_job_at_fintech_with_financial_services_in_snippet_not_excluded():
+    """SWE role at a fintech company that mentions 'financial services' in description."""
+    result = {
+        "title": "Software Engineer",
+        "text": "We build infrastructure for financial services and accounting software.",
+    }
+    assert _is_excluded(result) is False
+
+
+def test_swe_job_with_support_engineers_in_snippet_not_excluded():
+    """'Support engineers' mentioned as teammates should not exclude a SWE role."""
+    result = {
+        "title": "Junior Software Engineer",
+        "text": "You will collaborate with our support engineering and senior engineers.",
+    }
+    assert _is_excluded(result) is False
+
+
+def test_swe_job_with_senior_teammates_in_snippet_not_excluded():
+    """Junior role describing senior teammates should not be excluded."""
+    result = {
+        "title": "Junior Backend Engineer",
+        "text": "You will be mentored by Senior Engineers and Staff Developers.",
+    }
+    assert _is_excluded(result) is False
+
+
+def test_quality_assurance_engineer_title_is_excluded():
+    """QA Engineer in the title IS a non-SWE role and should be excluded."""
+    result = {"title": "Quality Assurance Engineer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_associate_product_manager_is_excluded():
+    result = {"title": "Associate Product Manager", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_data_analyst_associate_is_excluded():
+    result = {"title": "Data Analyst Associate", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_ux_designer_is_excluded():
+    result = {"title": "UX Designer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+# ---------------------------------------------------------------------------
+# Edge case: experience regex should not fire on equity vesting / company age
+# ---------------------------------------------------------------------------
+
+from src.scraper import _exceeds_experience_limit
+
+
+def test_vesting_schedule_not_excluded():
+    """Equity vesting mention should not trigger the experience filter."""
+    assert _exceeds_experience_limit("4 year vesting schedule with 1 year cliff") is False
+
+
+def test_founded_years_not_excluded():
+    """Company founding date should not trigger the experience filter."""
+    assert _exceeds_experience_limit("founded 15 years ago in singapore") is False
+
+
+def test_established_company_not_excluded():
+    assert _exceeds_experience_limit("an established 10 years company in fintech") is False
+
+
+# ---------------------------------------------------------------------------
+# Edge case: ATS junior signal "grad" catches EOL titles
+# ---------------------------------------------------------------------------
+
+from src.ats_client import _is_junior
+
+
+def test_is_junior_software_engineer_grad():
+    """'Software Engineer Grad' (grad at end of string) must be caught."""
+    assert _is_junior("Software Engineer Grad") is True
+
+
+def test_is_junior_grad_software_engineer():
+    assert _is_junior("Grad Software Engineer") is True
+
+
+def test_is_junior_swe_new_grad():
+    assert _is_junior("SWE New Grad") is True

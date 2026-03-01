@@ -22,7 +22,9 @@ from typing import Any
 
 from src.config import (
     EXCLUDE_DOMAINS,
-    EXCLUDE_KEYWORDS,
+    EXCLUDE_LOCATIONS,
+    EXCLUDE_ROLE_KEYWORDS,
+    EXCLUDE_SENIORITY,
     EXCLUDE_TITLE_PATTERNS,
     JUNK_SNIPPET_SIGNALS,
     MAX_JOB_AGE_DAYS,
@@ -120,20 +122,36 @@ def _is_excluded(result: dict[str, Any]) -> bool:
     """
     Return True if the result should be dropped.
 
-    Two sub-checks:
-    1. Flat keyword match — seniority titles, India locations, non-SWE roles
-       (checked against EXCLUDE_KEYWORDS, case-insensitive).
-    2. Experience requirement — regex-parses any "X years of experience"
-       pattern (including ranges and written-out numbers) and drops the
-       result if the minimum required experience exceeds TARGET_MAX_YEARS.
+    Three keyword sub-checks, then an experience regex check:
+    1. Location keywords (India cities) — checked against full title+snippet.
+       A job physically located in an excluded city is relevant wherever it appears.
+    2. Seniority keywords (Senior, Staff, Principal…) — title only.
+       Snippets routinely say "work alongside Senior Engineers"; we must not
+       exclude a Junior role because its description mentions senior teammates.
+    3. Role keywords (QA, support, sales, finance…) — title only.
+       Legitimate SWE snippets commonly mention "quality assurance standards",
+       "financial services platform", "accounting software" etc. — checking
+       these against the snippet would produce many false positives.
+    4. Experience requirement — regex over full haystack, with a heuristic to
+       skip company-history statements.
     """
-    haystack = f"{result.get('title', '')} {result.get('text', '')}".lower()
+    title = result.get("title", "").lower()
+    text = result.get("text", "").lower()
+    haystack = f"{title} {text}"
 
-    # --- 1. Flat keyword check ---
-    if any(kw.lower() in haystack for kw in EXCLUDE_KEYWORDS):
+    # --- 1. Location check (full haystack) ---
+    if any(kw.lower() in haystack for kw in EXCLUDE_LOCATIONS):
         return True
 
-    # --- 2. Experience requirement check ---
+    # --- 2. Seniority check (title only) ---
+    if any(kw.lower() in title for kw in EXCLUDE_SENIORITY):
+        return True
+
+    # --- 3. Role keyword check (title only) ---
+    if any(kw.lower() in title for kw in EXCLUDE_ROLE_KEYWORDS):
+        return True
+
+    # --- 4. Experience requirement check ---
     if _exceeds_experience_limit(haystack):
         return True
 
@@ -212,14 +230,21 @@ def _exceeds_experience_limit(haystack: str) -> bool:
             except ValueError:
                 continue
 
-        # Heuristic: skip if the match is preceded by "our", "we have",
-        # "with", "company" — these describe the company, not requirements.
+        # Heuristic: skip if context describes the company or equity, not a requirement.
+        # Check prefix (what comes BEFORE the N-year match).
         start = max(0, m.start() - 40)
         prefix = haystack[start : m.start()].lower()
         if any(
             tok in prefix
-            for tok in ("our ", "we have", "we've", "with over", "company", "firm")
+            for tok in ("our ", "we have", "we've", "with over", "company", "firm",
+                        "founded", "established")
         ):
+            continue
+
+        # Check suffix (what comes AFTER): equity vesting language like
+        # "4 year vesting schedule" or "1 year cliff".
+        suffix = haystack[m.end() : m.end() + 30].lower()
+        if any(tok in suffix for tok in ("vesting", "cliff", "vest")):
             continue
 
         if lo > TARGET_MAX_YEARS:

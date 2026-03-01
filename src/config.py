@@ -337,6 +337,16 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "sales development",
     "account executive",
     "business development representative",
+    # Product / design roles (not SWE)
+    "product manager",
+    "product designer",
+    "ux designer",
+    "ui designer",
+    "ux researcher",
+    # Data / business roles (not SWE)
+    "data analyst",
+    "business analyst",
+    "program manager",
 ]
 
 # Merge role keywords into the main exclude list
@@ -632,7 +642,7 @@ ATS_JUNIOR_SIGNALS: list[str] = [
     "entry level",
     "entry-level",
     "graduate",
-    "grad ",  # trailing space prevents matching "gradle"; won't match "Engineer Grad" (EOL)
+    "grad",   # "Software Engineer Grad" — safe here: _is_junior checks titles, not snippets
     "new grad",
     "associate",
     "early career",
