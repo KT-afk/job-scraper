@@ -49,10 +49,19 @@ def test_is_junior_case_insensitive():
 # ---------------------------------------------------------------------------
 
 def test_strip_html_removes_tags():
-    assert _strip_html("<p>Hello <b>world</b></p>") == "Hello world"
+    # </p> is a block-level close tag — it inserts ". " so sentences don't run together.
+    assert _strip_html("<p>Hello <b>world</b></p>") == "Hello world."
 
 def test_strip_html_collapses_whitespace():
-    assert _strip_html("<p>  Hello   </p>") == "Hello"
+    # Single block paragraph: trailing ". " collapses to "."
+    assert _strip_html("<p>  Hello   </p>") == "Hello."
+
+def test_strip_html_adjacent_paragraphs_get_separator():
+    assert _strip_html("<p>First.</p><p>Second.</p>") == "First. Second."
+
+def test_strip_html_no_double_period():
+    # Sentence already ends with "." — should not produce ".."
+    assert _strip_html("<p>Done.</p><p>Next.</p>") == "Done. Next."
 
 def test_strip_html_plain_text_passthrough():
     assert _strip_html("no html here") == "no html here"

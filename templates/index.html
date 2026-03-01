@@ -246,6 +246,7 @@
     .job-title { font-weight: 600; max-width: 480px; }
     .job-title a { color: var(--text); text-decoration: none; }
     .job-title a:hover { color: var(--accent); }
+    .job-company { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500; }
     .job-snippet {
       margin-top: 4px;
       font-size: 12px;
@@ -843,6 +844,7 @@
         <td class="job-title">
           <a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
           ${j.seen_today ? '<span class="new-badge">New</span>' : ''}
+          ${j.company ? `<div class="job-company">${esc(j.company)}</div>` : ''}
           ${j.snippet ? `<div class="job-snippet">${esc(j.snippet)}</div>` : ''}
           ${renderAnalysis(j.ai_analysis)}
         </td>

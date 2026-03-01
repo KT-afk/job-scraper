@@ -36,13 +36,28 @@ from src.config import (
 
 _TIMEOUT = httpx.Timeout(10.0)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+# Block-level closing tags and <br> — replaced with ". " so adjacent
+# paragraphs / list items don't run together without punctuation.
+_BLOCK_CLOSE_RE = re.compile(
+    r"</(?:p|li|h[1-6]|div|section|article|tr|td|th)\b[^>]*>|<br\s*/?>",
+    re.IGNORECASE,
+)
 
 
 def _strip_html(text: str) -> str:
-    """Remove HTML tags, decode HTML entities, and collapse whitespace."""
+    """Remove HTML tags and decode entities.
+
+    Block-level closing tags become '. ' so sentences from adjacent
+    paragraphs/list-items don't run together without punctuation.
+    Runs of dots (from already-punctuated sentences) are collapsed.
+    """
+    text = _BLOCK_CLOSE_RE.sub(". ", text)
     text = _HTML_TAG_RE.sub(" ", text)
     text = _html.unescape(text)
-    return " ".join(text.split())
+    text = re.sub(r"\.(\s*\.)+", ".", text)  # collapse ".. " artefacts
+    text = " ".join(text.split())
+    text = re.sub(r" \.", ".", text)         # "Hello ." → "Hello."
+    return text
 
 
 # "intern" needs a word-boundary check: plain substring would match

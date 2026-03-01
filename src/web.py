@@ -49,6 +49,13 @@ from src.storage import (
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(__name__, template_folder=os.path.join(_root, "templates"))
 
+
+def _prettify_company(author: str | None) -> str:
+    """Turn a slug like 'stripe' or 'open-ai' into 'Stripe' / 'Open Ai'."""
+    if not author:
+        return ""
+    return " ".join(w.capitalize() for w in author.replace("-", " ").split())
+
 # Ensure the DB and tables exist when gunicorn imports this module on Railway.
 init_db()
 print(f"[web] DB ready. Templates: {os.path.join(_root, 'templates')}")
@@ -119,6 +126,7 @@ def api_jobs():
             "visa_sponsored": j.visa_sponsored,
             "remote_ok":     j.remote_ok,
             "published":     j.published or "",
+            "company":       _prettify_company(j.author),
             "snippet":       _strip_html(j.snippet or ""),
             "seen_at":       j.seen_at[:10],
             "seen_today":    j.seen_at[:10] == today,

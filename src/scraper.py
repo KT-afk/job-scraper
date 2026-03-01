@@ -100,6 +100,33 @@ def _clean_snippet(text: str) -> str:
     return _strip_markdown(text)
 
 
+def _normalize_title(title: str) -> str:
+    """Lowercase, strip parentheticals and punctuation — used for dedup key."""
+    t = title.lower()
+    t = re.sub(r"\(.*?\)", "", t)   # drop "(Singapore)", "(Remote)" suffixes
+    t = re.sub(r"[^\w\s]", " ", t)
+    return " ".join(t.split())
+
+
+def _dedup_by_company_title(results: list[dict]) -> list[dict]:
+    """
+    Within a single batch, keep only the first result per
+    (company, normalized_title). Collapses duplicate postings from the same
+    company for the same role posted across multiple locations or ATS entries.
+    """
+    seen: set[tuple[str, str]] = set()
+    out: list[dict] = []
+    for r in results:
+        key = (
+            (r.get("author") or "").lower().strip(),
+            _normalize_title(r.get("title", "")),
+        )
+        if key not in seen:
+            seen.add(key)
+            out.append(r)
+    return out
+
+
 def _is_too_old(result: dict[str, Any]) -> bool:
     """
     Return True if the published date is older than MAX_JOB_AGE_DAYS.
@@ -349,6 +376,8 @@ def run_scrape() -> list[JobPosting]:
     ats_results = fetch_all_ats_jobs()
     raw_results = raw_results + ats_results
     print(f"[Scraper] Total raw results after ATS merge: {len(raw_results)}")
+    raw_results = _dedup_by_company_title(raw_results)
+    print(f"[Scraper] After company+title dedup: {len(raw_results)}")
 
     new_jobs: list[JobPosting] = []
     skipped_excluded = 0
