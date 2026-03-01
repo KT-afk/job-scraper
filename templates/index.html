@@ -217,8 +217,23 @@
       white-space: nowrap;
     }
 
-    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr { border-bottom: 1px solid var(--border); border-left: 3px solid transparent; transition: background 0.1s; }
     tbody tr:hover { background: var(--surface); }
+    tbody tr[data-tier="high"] { border-left-color: #16a34a; }
+    tbody tr[data-tier="mid"]  { border-left-color: #d97706; }
+    tbody tr[data-tier="low"]  { border-left-color: #dc2626; }
+
+    /* divider between top picks and "more in field" */
+    .divider-row td {
+      padding: 6px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 600;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
     tbody td { padding: 12px 14px; vertical-align: top; }
 
     /* dismissed rows */
@@ -228,14 +243,14 @@
     tbody tr.dismissed td { text-decoration: line-through; }
     tbody tr.dismissed td.no-strike { text-decoration: none; }
 
-    .job-title { font-weight: 600; max-width: 360px; }
+    .job-title { font-weight: 600; max-width: 480px; }
     .job-title a { color: var(--text); text-decoration: none; }
     .job-title a:hover { color: var(--accent); }
     .job-snippet {
       margin-top: 4px;
       font-size: 12px;
       color: var(--muted);
-      max-width: 360px;
+      max-width: 480px;
       line-height: 1.5;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -330,7 +345,7 @@
     .ai-empty a { color: var(--accent); }
 
     /* ── Tracking cell ── */
-    .tracking-cell { min-width: 160px; }
+    .tracking-cell { min-width: 130px; }
     .status-select {
       width: 100%;
       background: var(--bg);
@@ -367,6 +382,56 @@
     }
     .notes-textarea:focus { border-color: var(--accent); }
     .notes-textarea::placeholder { color: var(--muted); }
+
+    .note-btn {
+      margin-top: 4px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 2px 0;
+      display: block;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .note-btn:hover { color: var(--text); }
+
+    /* top-picks toggle */
+    .top-picks-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .top-picks-toggle.active {
+      border-color: var(--accent2);
+      background: #0f2a25;
+      color: #6ee7b7;
+    }
+
+    /* quick dismiss button */
+    .dismiss-btn {
+      margin-top: 5px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 3px 8px;
+      border-radius: 4px;
+      transition: all 0.1s;
+      display: block;
+      width: 100%;
+    }
+    .dismiss-btn:hover { border-color: var(--danger); color: var(--danger); background: #3b0f0f; }
 
     /* ── Empty / loading ── */
     .empty { text-align: center; padding: 80px 0; color: var(--muted); }
@@ -417,6 +482,7 @@
     Sort
     <select id="sort-select">
       <option value="date">Newest first</option>
+      <option value="score" selected>Best match</option>
       <option value="title">Title A–Z</option>
     </select>
   </div>
@@ -436,13 +502,14 @@
 
   <div class="pill-group" style="margin-left: 16px;">
     <span class="pill-group-label">Date</span>
-    <button class="pill active" data-group="days" data-value="">Any time</button>
+    <button class="pill" data-group="days" data-value="">Any time</button>
     <button class="pill" data-group="days" data-value="1">Today</button>
     <button class="pill" data-group="days" data-value="2">2 days</button>
-    <button class="pill" data-group="days" data-value="3">3 days</button>
+    <button class="pill active" data-group="days" data-value="3">3 days</button>
     <button class="pill" data-group="days" data-value="7">This week</button>
   </div>
 
+  <button class="top-picks-toggle" id="btn-top-picks" onclick="toggleTopPicks()">⭐ Top Picks</button>
   <button class="dismissed-toggle" id="btn-dismissed">Show Dismissed</button>
 </div>
 
@@ -454,12 +521,9 @@
   <table id="jobs-table" style="display:none">
     <thead>
       <tr>
-        <th>#</th>
         <th>Job</th>
-        <th>Discipline</th>
         <th>Tags</th>
-        <th>Published</th>
-        <th>Seen</th>
+        <th>Posted</th>
         <th>Track</th>
         <th></th>
       </tr>
@@ -488,7 +552,10 @@
 
   let filters = { visa: false, remote: false };
   let showDismissed = false;
+  let topPicksOnly = false;
   let debounceTimer = null;
+
+  const TOP_PICK_SCORE = 65; // jobs at/above this are "Top Picks"
 
   // ── Pill group state ──
   function getActivePill(group) {
@@ -512,6 +579,22 @@
     loadJobs();
   });
 
+  // ── Top Picks toggle ──
+  function toggleTopPicks() {
+    topPicksOnly = !topPicksOnly;
+    document.getElementById('btn-top-picks').classList.toggle('active', topPicksOnly);
+    loadJobs();
+  }
+
+  // ── Quick dismiss ──
+  function quickDismiss(btn, jobId) {
+    const row = btn.closest('tr');
+    row.classList.add('dismissed');
+    const sel = row.querySelector('.status-select');
+    if (sel) { sel.value = 'dismissed'; sel.dataset.status = 'dismissed'; }
+    updateJob(jobId, { status: 'dismissed' });
+  }
+
   // ── Existing toggles ──
   function toggleFilter(key) {
     filters[key] = !filters[key];
@@ -529,22 +612,40 @@
 
   function locationTags(job) {
     const tags = [];
+    if (job.discipline) tags.push(`<span class="tag tag-discipline">${esc(job.discipline)}</span>`);
     const loc = (job.location || '').toLowerCase();
     if (loc === 'singapore' || loc.includes('singapore')) {
-      tags.push('<span class="tag tag-singapore">Singapore</span>');
+      tags.push('<span class="tag tag-singapore">SG</span>');
     } else if (loc.includes('visa')) {
       // handled by visa badge below
     } else if (loc !== 'remote') {
       tags.push(`<span class="tag tag-location">${esc(job.location)}</span>`);
     }
-    if (job.visa_sponsored) tags.push('<span class="tag tag-visa">Visa Sponsor</span>');
+    if (job.visa_sponsored) tags.push('<span class="tag tag-visa">Visa</span>');
     if (job.remote_ok)      tags.push('<span class="tag tag-remote">Remote</span>');
     return tags.join(' ');
   }
 
-  function formatDate(d) {
-    if (!d) return '<span style="color:var(--border)">—</span>';
-    return esc(d.slice(0, 10));
+  function relativeDate(dateStr) {
+    if (!dateStr) return '<span style="color:var(--border)">—</span>';
+    const date = new Date(dateStr + 'T00:00:00Z');
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const diffDays = Math.round((today - date) / 86400000);
+    if (diffDays === 0) return '<span style="color:var(--accent2)">Today</span>';
+    if (diffDays === 1) return '<span style="color:var(--muted)">Yesterday</span>';
+    if (diffDays <= 6) return `<span style="color:var(--muted)">${diffDays}d ago</span>`;
+    return `<span style="color:var(--muted)">${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>`;
+  }
+
+  function getScore(aiJson) {
+    if (!aiJson) return -1;
+    try {
+      const a = typeof aiJson === 'string' ? JSON.parse(aiJson) : aiJson;
+      const s = a.overall_score;
+      if (s === undefined || s === null) return -1;
+      return typeof s === 'number' && s <= 1 ? s * 100 : s;
+    } catch { return -1; }
   }
 
   // ── AI analysis chip strip ──
@@ -624,12 +725,18 @@
       `<option value="${s}" ${job.status === s ? 'selected' : ''}>${labels[i]}</option>`
     ).join('');
 
+    const hasNotes = !!(job.notes && job.notes.trim());
+    const isDismissed = job.status === 'dismissed';
     return `<select class="status-select" data-status="${esc(job.status)}" data-job-id="${esc(job.id)}" onchange="onStatusChange(this)">
       ${options}
     </select>
+    ${!isDismissed ? `<button class="dismiss-btn" onclick="quickDismiss(this, '${esc(job.id)}')">✕ Dismiss</button>` : ''}
+    <button class="note-btn" onclick="this.style.display='none';this.nextElementSibling.style.display='block';this.nextElementSibling.focus()" style="${hasNotes ? 'display:none' : ''}">+ note</button>
     <textarea class="notes-textarea" data-job-id="${esc(job.id)}"
-      placeholder="Notes…"
-      onblur="onNotesBlur(this)">${esc(job.notes || '')}</textarea>`;
+      placeholder="Add a note…"
+      onblur="onNotesBlur(this)"
+      style="${hasNotes ? '' : 'display:none'}"
+    >${esc(job.notes || '')}</textarea>`;
   }
 
   function onStatusChange(select) {
@@ -696,7 +803,7 @@
     if (daysVal)   params.set('days', daysVal);
 
     const res  = await fetch(`/api/jobs?${params}`);
-    const jobs = await res.json();
+    let jobs = await res.json();
 
     spinner.style.display = 'none';
 
@@ -707,25 +814,48 @@
 
     resultCount.textContent = `Showing ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
 
-    tbody.innerHTML = jobs.map((j, i) => `
-      <tr class="${j.status === 'dismissed' ? 'dismissed' : ''}">
-        <td class="date-cell">${i + 1}</td>
+    // Client-side score sort (API only knows date/title)
+    if (sortEl.value === 'score') {
+      jobs.sort((a, b) => getScore(b.ai_analysis) - getScore(a.ai_analysis));
+    }
+
+    // Top Picks filter: show only score ≥ TOP_PICK_SCORE
+    if (topPicksOnly) {
+      jobs = jobs.filter(j => getScore(j.ai_analysis) >= TOP_PICK_SCORE);
+    }
+
+    // Build rows; inject a divider between top picks and lower-score jobs when sorting by score
+    const scoreSorted = sortEl.value === 'score' && !topPicksOnly;
+    const dividerIdx = scoreSorted
+      ? jobs.findIndex(j => getScore(j.ai_analysis) < TOP_PICK_SCORE)
+      : -1;
+
+    const COLS = 5; // total columns for colspan
+
+    const rows = jobs.map((j, i) => {
+      const score = getScore(j.ai_analysis);
+      const tier = score >= 70 ? 'high' : score >= 45 ? 'mid' : score >= 0 ? 'low' : 'none';
+      const divider = (i === dividerIdx)
+        ? `<tr class="divider-row"><td colspan="${COLS}">— More in your field —</td></tr>`
+        : '';
+      return divider + `
+      <tr class="${j.status === 'dismissed' ? 'dismissed' : ''}" data-tier="${tier}">
         <td class="job-title">
           <a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>
           ${j.seen_today ? '<span class="new-badge">New</span>' : ''}
           ${j.snippet ? `<div class="job-snippet">${esc(j.snippet)}</div>` : ''}
           ${renderAnalysis(j.ai_analysis)}
         </td>
-        <td><span class="tag tag-discipline">${esc(j.discipline || '—')}</span></td>
         <td>${locationTags(j)}</td>
-        <td class="date-cell">${formatDate(j.published)}</td>
-        <td class="seen-cell">${esc(j.seen_at)}</td>
+        <td class="date-cell">${relativeDate(j.published)}</td>
         <td class="tracking-cell no-strike">${renderStatusSelect(j)}</td>
         <td class="no-strike">
           <a class="link-btn" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    });
+
+    tbody.innerHTML = rows.join('');
 
     table.style.display = 'table';
   }
