@@ -311,7 +311,11 @@
       border-radius: 999px;
       font-size: 11px;
       font-weight: 500;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: default;
     }
     .ai-chip-disqualifier { background: #3b0f0f; color: #fca5a5; border: 1px solid #7f1d1d; }
     .ai-chip-caution      { background: #2a1f00; color: #fcd34d; border: 1px solid #78350f; }
@@ -544,6 +548,12 @@
   }
 
   // ── AI analysis chip strip ──
+  const MAX_CHIP_LEN = 45;
+  function chipLabel(text) {
+    // Truncate long labels; show full text on hover via title attribute.
+    return text.length > MAX_CHIP_LEN ? text.slice(0, MAX_CHIP_LEN - 1) + '…' : text;
+  }
+
   function renderAnalysis(aiJson) {
     if (!aiJson) {
       return `<div class="ai-empty">No AI analysis — <a href="/settings">set up your profile</a> to enable screening.</div>`;
@@ -558,40 +568,33 @@
 
     const chips = [];
 
-    const disqs = analysis.disqualifiers || [];
-    const maxDisqs = 3;
-    disqs.slice(0, maxDisqs).forEach(d => {
-      chips.push(`<span class="ai-chip ai-chip-disqualifier">✕ ${esc(d)}</span>`);
-    });
-    if (disqs.length > maxDisqs) {
-      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${disqs.length - maxDisqs} more</span>`);
+    // Score badge — shown first so it's the fastest thing to scan.
+    const score = analysis.overall_score;
+    if (score !== undefined && score !== null) {
+      const pct = Math.round(typeof score === 'number' && score <= 1 ? score * 100 : score);
+      const scoreColor = pct >= 70 ? '#86efac' : pct >= 45 ? '#fcd34d' : '#fca5a5';
+      const scoreBg    = pct >= 70 ? '#0f2a1a' : pct >= 45 ? '#2a1f00' : '#3b0f0f';
+      const scoreBdr   = pct >= 70 ? '#14532d' : pct >= 45 ? '#78350f' : '#7f1d1d';
+      chips.push(`<span class="ai-chip" style="background:${scoreBg};color:${scoreColor};border:1px solid ${scoreBdr};font-weight:700">${pct}%</span>`);
     }
 
+    // Disqualifiers — max 2 (most actionable signal).
+    (analysis.disqualifiers || []).slice(0, 2).forEach(d => {
+      chips.push(`<span class="ai-chip ai-chip-disqualifier" title="${esc(d)}">✕ ${esc(chipLabel(d))}</span>`);
+    });
+
+    // Caution — max 1.
     const cautions = analysis.caution || [];
-    const maxCautions = 2;
-    cautions.slice(0, maxCautions).forEach(c => {
-      chips.push(`<span class="ai-chip ai-chip-caution">⚠ ${esc(c)}</span>`);
-    });
-    if (cautions.length > maxCautions) {
-      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${cautions.length - maxCautions} more</span>`);
+    if (cautions.length > 0) {
+      const c = cautions[0];
+      chips.push(`<span class="ai-chip ai-chip-caution" title="${esc(c)}">⚠ ${esc(chipLabel(c))}</span>`);
     }
 
+    // Matched projects — max 1.
     const projects = analysis.matched_projects || [];
-    const maxProjects = 2;
-    projects.slice(0, maxProjects).forEach(p => {
-      chips.push(`<span class="ai-chip ai-chip-match">✓ ${esc(p)}</span>`);
-    });
-    if (projects.length > maxProjects) {
-      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${projects.length - maxProjects} more</span>`);
-    }
-
-    const reqs = analysis.key_requirements || [];
-    const maxReqs = 3;
-    reqs.slice(0, maxReqs).forEach(r => {
-      chips.push(`<span class="ai-chip ai-chip-req">${esc(r)}</span>`);
-    });
-    if (reqs.length > maxReqs) {
-      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${reqs.length - maxReqs} more</span>`);
+    if (projects.length > 0) {
+      const p = projects[0];
+      chips.push(`<span class="ai-chip ai-chip-match" title="${esc(p)}">✓ ${esc(chipLabel(p))}</span>`);
     }
 
     if (chips.length === 0) {

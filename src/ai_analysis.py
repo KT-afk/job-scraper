@@ -59,10 +59,12 @@ _ANALYSIS_SCHEMA = {
 _ANALYZE_SYSTEM = (
     "You are a job-hunt assistant. Given a job posting and a candidate profile, "
     "return ONLY a JSON object with exactly these keys: "
-    "disqualifiers (hard blockers), caution (soft concerns), "
-    "matched_projects (candidate's relevant projects), "
-    "key_requirements (3-5 bullet points of what the role needs), "
-    "overall_score (float 0.0–1.0 overall fit score, 0=poor fit, 1=excellent fit). "
+    "disqualifiers (list of SHORT hard-blocker labels, max 6 words each), "
+    "caution (list of SHORT soft-concern labels, max 6 words each), "
+    "matched_projects (list of SHORT matched-project labels, max 5 words each), "
+    "key_requirements (list of 3 SHORT requirement labels, max 5 words each), "
+    "overall_score (int 0–100 overall fit score, 0=poor fit, 100=excellent fit). "
+    "Keep every label SHORT — a few words, not a sentence. "
     "No markdown, no explanation, just the JSON object."
 )
 
