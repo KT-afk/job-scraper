@@ -33,6 +33,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from sqlmodel import Session, select
 
+from src.ats_client import _strip_html
 from src.storage import (
     JobPosting,
     UserProfile,
@@ -118,7 +119,7 @@ def api_jobs():
             "visa_sponsored": j.visa_sponsored,
             "remote_ok":     j.remote_ok,
             "published":     j.published or "",
-            "snippet":       j.snippet or "",
+            "snippet":       _strip_html(j.snippet or ""),
             "seen_at":       j.seen_at[:10],
             "seen_today":    j.seen_at[:10] == today,
             "status":        j.status,
