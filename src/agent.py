@@ -13,10 +13,12 @@ If no user profile exists, query generation is skipped (retirement still runs).
 If Claude fails for any reason, the error is logged and we return — the scrape
 data is already saved and the next run will proceed unchanged.
 """
+
 from __future__ import annotations
 
 import json
 import logging
+import re
 
 import anthropic
 
@@ -32,6 +34,18 @@ from src.storage import (
 logger = logging.getLogger(__name__)
 
 MAX_AGENT_QUERIES = 20
+
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
+
+
+def _extract_json(text: str) -> dict:
+    """Parse JSON from a string that may be wrapped in markdown code fences."""
+    text = text.strip()
+    m = _JSON_FENCE_RE.search(text)
+    if m:
+        text = m.group(1).strip()
+    return json.loads(text)
+
 
 _REFLECT_SYSTEM = (
     "You are a job-search query optimizer. You receive a history of search query "
@@ -107,7 +121,7 @@ def reflect() -> None:
         message = _call_claude(prompt)
         block = message.content[0]
         raw = block.text  # type: ignore[union-attr]
-        decision = json.loads(raw)
+        decision = _extract_json(raw)
     except Exception as exc:
         logger.warning(f"[Agent] Reflection failed: {exc}")
         return

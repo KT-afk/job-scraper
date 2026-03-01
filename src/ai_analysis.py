@@ -20,12 +20,29 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from typing import Optional
 
 import anthropic
 
 import src.config as _cfg
 from src.storage import JobPosting, UserProfile
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
+
+
+def _extract_json(text: str) -> dict:
+    """Parse JSON from a string that may be wrapped in markdown code fences."""
+    text = text.strip()
+    m = _JSON_FENCE_RE.search(text)
+    if m:
+        text = m.group(1).strip()
+    return json.loads(text)
+
 
 # ---------------------------------------------------------------------------
 # analyze_job
@@ -86,7 +103,7 @@ Return the JSON analysis object."""
             messages=[{"role": "user", "content": prompt}],
         )
         raw = message.content[0].text
-        return json.loads(raw)
+        return _extract_json(raw)
     except Exception as exc:
         print(f"[AI] analyze_job failed for {job.id}: {exc}")
         return None
@@ -148,7 +165,7 @@ def parse_resume(pdf_bytes: bytes) -> Optional[dict]:
             ],
         )
         raw = message.content[0].text
-        return json.loads(raw)
+        return _extract_json(raw)
     except Exception as exc:
         print(f"[AI] parse_resume failed: {exc}")
         return None
