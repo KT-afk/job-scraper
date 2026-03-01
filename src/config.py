@@ -104,11 +104,16 @@ EXCLUDE_SENIORITY: list[str] = [
     "Lead Engineer",
     "Lead Developer",
     "Lead Software",
+    "Lead ",          # catches "Lead Backend Engineer", "Lead SRE", etc.
     "Associate Director",
     "Engineering Manager",
     "Head of Engineering",
     "VP of Engineering",
+    "VP ",            # catches "VP Software", "VP, Engineering" etc.
     "Director of Engineering",
+    "Director",       # any Director role is senior (Director, Internal Audit etc.)
+    "Principal",      # catches "Principal SRE", "Principal Backend" (not just Principal Engineer)
+    "Staff ",         # catches "Staff Backend Engineer", "Staff SRE" (not just Staff Engineer)
     # Dynamic year filters are generated from TARGET_MAX_YEARS:
     # "3+ years", "4+ years", ... "15+ years" are added at runtime.
 ]
@@ -347,6 +352,18 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "data analyst",
     "business analyst",
     "program manager",
+    # Engineering-adjacent but non-SWE
+    "technical writer",
+    "mechanical engineer",
+    "solutions consultant",
+    "auditor",         # internal auditor, financial auditor, etc.
+    "app reviewer",
+    "data annotator",
+    # Recruiting / HR (non-SWE)
+    "recruiting",      # catches "Recruiting Associate", "Recruiting Manager"
+    # Legal / compliance (non-SWE)
+    "legal intern",
+    "compliance analyst",
 ]
 
 # Merge role keywords into the main exclude list

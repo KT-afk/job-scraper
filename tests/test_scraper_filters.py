@@ -386,3 +386,81 @@ def test_is_junior_grad_software_engineer():
 
 def test_is_junior_swe_new_grad():
     assert _is_junior("SWE New Grad") is True
+
+
+def test_is_junior_intern_at_end():
+    assert _is_junior("Software Engineer Intern") is True
+
+
+def test_is_junior_internship():
+    assert _is_junior("Backend Engineering Internship") is True
+
+
+def test_is_junior_internal_not_matched():
+    """'internal' should NOT be caught as a junior signal."""
+    assert _is_junior("Manager, Software Engineering - Internal Tools") is False
+
+
+def test_is_junior_international_not_matched():
+    """'international' should NOT be caught as a junior signal."""
+    assert _is_junior("International Tax Manager") is False
+
+
+def test_is_junior_internal_auditor_not_matched():
+    assert _is_junior("Internal Auditor, Luxembourg") is False
+
+
+# ---------------------------------------------------------------------------
+# Edge case: seniority gaps — Principal/Staff/Lead/Director without explicit
+# pairing (e.g. "Principal SRE" not just "Principal Engineer")
+# ---------------------------------------------------------------------------
+
+
+def test_principal_sre_is_excluded():
+    result = {"title": "Principal Site Reliability Engineer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_staff_backend_engineer_is_excluded():
+    result = {"title": "Staff Backend Engineer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_lead_backend_engineer_is_excluded():
+    result = {"title": "Lead Backend Engineer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_director_role_is_excluded():
+    result = {"title": "Director, International Financial Reporting", "text": ""}
+    assert _is_excluded(result) is True
+
+
+# ---------------------------------------------------------------------------
+# Edge case: additional non-SWE roles
+# ---------------------------------------------------------------------------
+
+
+def test_technical_writer_is_excluded():
+    result = {"title": "Technical Writer - No Experience", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_mechanical_engineer_is_excluded():
+    result = {"title": "Graduate Mechanical Engineer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_solutions_consultant_is_excluded():
+    result = {"title": "Associate Solutions Consultant", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_recruiting_associate_is_excluded():
+    result = {"title": "Recruiting Associate (Tel Aviv, Israel)", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_internal_auditor_is_excluded():
+    result = {"title": "Internal Auditor, Luxembourg", "text": ""}
+    assert _is_excluded(result) is True

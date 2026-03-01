@@ -45,10 +45,24 @@ def _strip_html(text: str) -> str:
     return " ".join(text.split())
 
 
+# "intern" needs a word-boundary check: plain substring would match
+# "internal" and "international", pulling in Director/Manager/Auditor ATS roles.
+# Pattern: "intern" not immediately followed by "al" or "atio" (covers both).
+_INTERN_RE = re.compile(r"\bintern(?!al|atio)\w*", re.IGNORECASE)
+
+
 def _is_junior(title: str) -> bool:
     """Return True if the title contains any ATS_JUNIOR_SIGNALS substring."""
     title_lower = title.lower()
-    return any(sig in title_lower for sig in ATS_JUNIOR_SIGNALS)
+    for sig in ATS_JUNIOR_SIGNALS:
+        if sig == "intern":
+            # Word-boundary-aware check: matches "intern", "interns", "internship"
+            # but NOT "internal" or "international".
+            if _INTERN_RE.search(title_lower):
+                return True
+        elif sig in title_lower:
+            return True
+    return False
 
 
 def _infer_location(location_name: str, is_remote: bool = False) -> str:
