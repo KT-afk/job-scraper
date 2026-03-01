@@ -558,18 +558,41 @@
 
     const chips = [];
 
-    (analysis.disqualifiers || []).forEach(d => {
+    const disqs = analysis.disqualifiers || [];
+    const maxDisqs = 3;
+    disqs.slice(0, maxDisqs).forEach(d => {
       chips.push(`<span class="ai-chip ai-chip-disqualifier">✕ ${esc(d)}</span>`);
     });
-    (analysis.caution || []).forEach(c => {
+    if (disqs.length > maxDisqs) {
+      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${disqs.length - maxDisqs} more</span>`);
+    }
+
+    const cautions = analysis.caution || [];
+    const maxCautions = 2;
+    cautions.slice(0, maxCautions).forEach(c => {
       chips.push(`<span class="ai-chip ai-chip-caution">⚠ ${esc(c)}</span>`);
     });
-    (analysis.matched_projects || []).forEach(p => {
+    if (cautions.length > maxCautions) {
+      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${cautions.length - maxCautions} more</span>`);
+    }
+
+    const projects = analysis.matched_projects || [];
+    const maxProjects = 2;
+    projects.slice(0, maxProjects).forEach(p => {
       chips.push(`<span class="ai-chip ai-chip-match">✓ ${esc(p)}</span>`);
     });
-    (analysis.key_requirements || []).forEach(r => {
+    if (projects.length > maxProjects) {
+      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${projects.length - maxProjects} more</span>`);
+    }
+
+    const reqs = analysis.key_requirements || [];
+    const maxReqs = 3;
+    reqs.slice(0, maxReqs).forEach(r => {
       chips.push(`<span class="ai-chip ai-chip-req">${esc(r)}</span>`);
     });
+    if (reqs.length > maxReqs) {
+      chips.push(`<span class="ai-chip" style="background:#1a1d27;color:var(--muted);border:1px solid var(--border)">+${reqs.length - maxReqs} more</span>`);
+    }
 
     if (chips.length === 0) {
       return `<div class="ai-empty">Analysis returned no items.</div>`;

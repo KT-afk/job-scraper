@@ -278,6 +278,7 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "copywriter",
     "customer support",
     "customer service",
+    "customer success",
     "data entry",
     "virtual assistant",
     "content writer",
@@ -303,6 +304,10 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "financial adviser",
     "financial advisor",
     "financial services",
+    "financial analyst",
+    "finance analyst",
+    "accounts receivable",
+    "accounts payable",
     "trader development",
     "trading program",
     # Healthcare / professional services (not SWE)
@@ -312,6 +317,26 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "tax associate",
     "legal associate",
     "consulting associate",
+    # QA / testing roles (not SWE)
+    "qa tester",
+    "quality assurance",
+    "quality engineer",
+    "test engineer",
+    "qa engineer",
+    "quality analyst",
+    # IT support / helpdesk roles (not SWE)
+    "support engineer",
+    "help desk",
+    "helpdesk",
+    "service desk",
+    "technical support",
+    "it support",
+    # Sales roles (not SWE)
+    "payments sales",
+    "sales associate",
+    "sales development",
+    "account executive",
+    "business development representative",
 ]
 
 # Merge role keywords into the main exclude list

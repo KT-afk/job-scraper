@@ -2,7 +2,7 @@
 tests/test_scraper_filters.py
 ------------------------------
 Tests for scraper helper functions: _detect_visa, _strip_markdown,
-and config list contents (EXCLUDE_KEYWORDS, EXCLUDE_DOMAINS, etc.).
+_exceeds_experience_limit, _is_excluded, _is_junk, and config list contents.
 """
 
 from src.scraper import _detect_visa
@@ -63,33 +63,33 @@ def test_visa_negation_ineligible_returns_false():
     assert _detect_visa(result) is False
 
 
+# ---------------------------------------------------------------------------
+# EXCLUDE_KEYWORDS content checks (seniority + location keywords remain)
+# ---------------------------------------------------------------------------
+
 from src.config import EXCLUDE_KEYWORDS
 
 
-def test_written_out_years_excluded():
-    assert "3 or more years" in EXCLUDE_KEYWORDS
-    assert "minimum 5 years" in EXCLUDE_KEYWORDS
-    assert "at least 4 years" in EXCLUDE_KEYWORDS
+def test_seniority_keywords_present():
+    assert "Senior" in EXCLUDE_KEYWORDS
+    assert "Staff Engineer" in EXCLUDE_KEYWORDS
+    assert "Engineering Manager" in EXCLUDE_KEYWORDS
 
 
-def test_numeric_years_still_excluded():
-    assert "3+ years" in EXCLUDE_KEYWORDS
-    assert "10+ years" in EXCLUDE_KEYWORDS
-
-
-def test_written_out_max_boundary():
-    assert "15 or more years" in EXCLUDE_KEYWORDS
-    assert "minimum 15 years" in EXCLUDE_KEYWORDS
+def test_location_keywords_present():
+    assert "India" in EXCLUDE_KEYWORDS
+    assert "Bangalore" in EXCLUDE_KEYWORDS
 
 
 def test_written_out_within_target_not_excluded():
-    # TARGET_MAX_YEARS is 2, so "2 or more years" must NOT be in the list
+    # TARGET_MAX_YEARS is 2 — "2 or more years" is NOT a flat keyword
+    # (it's handled by the regex in _exceeds_experience_limit instead).
     assert "2 or more years" not in EXCLUDE_KEYWORDS
     assert "minimum 2 years" not in EXCLUDE_KEYWORDS
 
 
 # ---------------------------------------------------------------------------
-# Filter list extensions (Task 3)
+# Filter list extensions
 # ---------------------------------------------------------------------------
 
 from src.config import EXCLUDE_DOMAINS, EXCLUDE_ROLE_KEYWORDS, EXCLUDE_TITLE_PATTERNS
@@ -113,14 +113,16 @@ def test_aggregator_title_patterns_present():
 
 
 # ---------------------------------------------------------------------------
-# _strip_markdown (Task 4)
+# _strip_markdown
 # ---------------------------------------------------------------------------
 
 from src.scraper import _strip_markdown
 
 
 def test_strip_markdown_removes_h2_header():
-    assert _strip_markdown("## About Us\nWe build things.") == "About Us\nWe build things."
+    assert (
+        _strip_markdown("## About Us\nWe build things.") == "About Us\nWe build things."
+    )
 
 
 def test_strip_markdown_removes_h1_header():
@@ -141,25 +143,143 @@ def test_strip_markdown_removes_italic():
 
 
 # ---------------------------------------------------------------------------
-# Functional filter tests (calling _is_excluded / _is_junk directly)
+# _exceeds_experience_limit — the new regex-based experience filter
+# ---------------------------------------------------------------------------
+
+from src.scraper import _exceeds_experience_limit
+
+
+def test_numeric_plus_over_limit():
+    assert _exceeds_experience_limit("requires 3+ years of experience") is True
+
+
+def test_numeric_plus_at_limit():
+    # 2+ years — lower bound is 2, which equals TARGET_MAX_YEARS → allowed
+    assert _exceeds_experience_limit("2+ years of experience required") is False
+
+
+def test_numeric_range_over_limit():
+    # "1-3 years" — lower bound is 1, allowed
+    assert _exceeds_experience_limit("1-3 years experience") is False
+
+
+def test_numeric_range_lower_bound_over_limit():
+    # "3-5 years" — lower bound is 3 > TARGET_MAX_YEARS → excluded
+    assert _exceeds_experience_limit("3-5 years of experience") is True
+
+
+def test_written_out_word_over_limit():
+    assert _exceeds_experience_limit("minimum three years of experience") is True
+
+
+def test_written_out_word_at_limit():
+    assert _exceeds_experience_limit("two years of experience preferred") is False
+
+
+def test_minimum_prefix_over_limit():
+    assert _exceeds_experience_limit("minimum 4 years relevant experience") is True
+
+
+def test_at_least_prefix_over_limit():
+    assert _exceeds_experience_limit("at least 3 years of work experience") is True
+
+
+def test_company_history_not_excluded():
+    # "our 10 years of experience" describes the company, not a requirement
+    assert (
+        _exceeds_experience_limit("with our 10 years of experience in fintech") is False
+    )
+
+
+def test_we_have_not_excluded():
+    assert (
+        _exceeds_experience_limit("we have 5 years of experience building platforms")
+        is False
+    )
+
+
+def test_no_experience_mention_not_excluded():
+    assert _exceeds_experience_limit("join our team and grow your career") is False
+
+
+def test_or_more_pattern_over_limit():
+    assert _exceeds_experience_limit("5 or more years experience") is True
+
+
+# ---------------------------------------------------------------------------
+# _is_excluded and _is_junk functional tests
 # ---------------------------------------------------------------------------
 
 from src.scraper import _is_excluded, _is_junk
 
 
 def test_written_out_phrase_triggers_is_excluded():
-    """Written-out year phrase in text must cause _is_excluded to return True."""
     result = {"title": "", "text": "Requires minimum 3 years of experience in Python."}
     assert _is_excluded(result) is True
 
 
+def test_numeric_range_over_limit_triggers_is_excluded():
+    result = {"title": "", "text": "Looking for 3-5 years of backend experience."}
+    assert _is_excluded(result) is True
+
+
+def test_acceptable_experience_not_excluded():
+    result = {
+        "title": "Junior Backend Engineer",
+        "text": "0-2 years of experience welcome. Fresh grads encouraged.",
+    }
+    assert _is_excluded(result) is False
+
+
 def test_finance_role_keyword_triggers_is_excluded():
-    """A title containing a finance role keyword must cause _is_excluded to return True."""
     result = {"title": "Senior Accounting Manager", "text": ""}
     assert _is_excluded(result) is True
 
 
 def test_aggregator_title_triggers_is_junk():
-    """A title containing an aggregator title pattern must cause _is_junk to return True."""
-    result = {"url": "https://example.com/page", "title": "Remote Jobs 2025"}
+    result = {
+        "url": "https://example.com/page",
+        "title": "Remote Jobs 2025",
+        "text": "",
+    }
     assert _is_junk(result) is True
+
+
+def test_closed_job_triggers_is_junk():
+    result = {
+        "url": "https://somejob.com/backend-engineer",
+        "title": "Backend Engineer",
+        "text": "This job is no longer accepting applicants. Please browse other openings.",
+    }
+    assert _is_junk(result) is True
+
+
+# ---------------------------------------------------------------------------
+# Non-SWE role exclusion tests — roles slipping through filters
+# ---------------------------------------------------------------------------
+
+
+def test_beginner_qa_tester_is_excluded():
+    result = {"title": "Beginner QA Tester", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_associate_support_engineer_is_excluded():
+    result = {"title": "Associate Support Engineer", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_accounts_receivable_associate_is_excluded():
+    result = {"title": "Accounts Receivable Associate", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_associate_manager_payments_sales_is_excluded():
+    result = {"title": "Associate Manager Payments Sales", "text": ""}
+    assert _is_excluded(result) is True
+
+
+def test_software_engineer_not_excluded():
+    """Ensure legitimate SWE roles are not accidentally excluded."""
+    result = {"title": "Software Engineer", "text": ""}
+    assert _is_excluded(result) is False

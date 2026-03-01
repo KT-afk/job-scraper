@@ -14,6 +14,7 @@ Orchestrates one full scrape cycle:
 
 from __future__ import annotations
 
+import html as _html
 import json
 import re
 from datetime import date as _date, timedelta
@@ -45,6 +46,9 @@ from src.storage import (
     update_job_analysis,
     upsert_query_performance,
 )
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 # Title keyword → discipline mapping for ATS results (which have no Exa query string).
@@ -84,6 +88,14 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)  # bold
     text = re.sub(r"\*(.*?)\*", r"\1", text)  # italic
     return text
+
+
+def _clean_snippet(text: str) -> str:
+    """Strip HTML tags and decode entities, then remove markdown formatting."""
+    text = _HTML_TAG_RE.sub(" ", text)
+    text = _html.unescape(text)
+    text = " ".join(text.split())  # normalize whitespace
+    return _strip_markdown(text)
 
 
 def _is_too_old(result: dict[str, Any]) -> bool:
@@ -358,7 +370,7 @@ def run_scrape() -> list[JobPosting]:
             title=result["title"],
             published=result.get("published"),
             author=result.get("author"),
-            snippet=_strip_markdown(result.get("text", "")),
+            snippet=_clean_snippet(result.get("text", "")),
             role=result["role"],
             discipline=discipline,
             location=result["location_searched"],
