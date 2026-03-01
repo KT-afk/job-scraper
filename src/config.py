@@ -97,8 +97,14 @@ EXCLUDE_SENIORITY: list[str] = [
     "Staff Software",
     "Principal Engineer",
     "Principal Software",
+    "Principal Cloud",
+    "Principal Platform",
+    "Principal Data",
+    "Principal Product",
     "Lead Engineer",
     "Lead Developer",
+    "Lead Software",
+    "Associate Director",
     "Engineering Manager",
     "Head of Engineering",
     "VP of Engineering",
@@ -259,6 +265,10 @@ EXCLUDE_DOMAINS: list[str] = [
     "cnbc.com",
     "forbes.com",
     "businessinsider.com",
+    # Singapore internship/grad listing sites
+    "internsg.com",
+    "capitalplacement.com",
+    "gradsingapore.com",
 ]
 
 # Title/snippet keywords that indicate a non-SWE role.
@@ -285,6 +295,23 @@ EXCLUDE_ROLE_KEYWORDS: list[str] = [
     "bookkeeping",
     "payroll",
     "finance manager",
+    # Finance / banking roles (not SWE)
+    "relationship management",
+    "retail banking",
+    "investment banking",
+    "wealth management",
+    "financial adviser",
+    "financial advisor",
+    "financial services",
+    "trader development",
+    "trading program",
+    # Healthcare / professional services (not SWE)
+    "healthcare management",
+    "real estate",
+    "tax advisory",
+    "tax associate",
+    "legal associate",
+    "consulting associate",
 ]
 
 # Merge role keywords into the main exclude list
@@ -368,6 +395,22 @@ EXCLUDE_TITLE_PATTERNS: list[str] = [
     "help defend",          # e.g. "Mindef to deploy teams to help defend..."
     "deploy sectoral",
     "industry traineeship",  # news about traineeship programmes, not postings
+    # Non-job article/guide titles
+    "job profile (",        # "Software Engineer Job Profile (Responsabilities...)"
+    "application guide",    # "J1 visa USA | 2026 Application guide..."
+    "j1 visa",
+    "sponsoring it jobs",   # "Visa sponsoring IT jobs"
+    "job details |",        # "Job Details | Standard Chartered Bank"
+    # Listing page titles
+    "top internships",      # "Get Top Internships in Singapore"
+    "graduate jobs and",    # "Graduate Jobs and Internships in Singapore (91 open)"
+    "jobs and internships",
+    "internships in singapore",
+    "early career opportunities",  # "Early career opportunities | EY Singapore"
+    "emplois au",           # French job listing pages
+    # Non-SWE programme titles
+    "trader development",
+    "campus hire",          # generic grad programmes, not SWE-specific postings
 ]
 
 # Snippet substrings that indicate a news article rather than a job posting.
